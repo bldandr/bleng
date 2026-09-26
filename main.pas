@@ -1,0 +1,1551 @@
+{$MODE TP}
+
+program qq;
+
+
+Type str15 = string[15];
+     Ident = (
+     cmName, cmNumber, cmTZ, cmVar, cmZP, cmTT, cmInt,
+     cmFSO, cmFSC, cmWrite, cmIF, cmSO, cmSC, cmConst, cmOper, cmString,
+     cmRavno, cmBool, cmOpSr, cmOpB, cmOpM, cmOpBR, cmOpMR,
+     cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
+     cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
+     cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
+     cmFunc, cmReturn, cmIdent);
+
+const MaxLex = 49; Max_Items = 8190;
+      MainLex: array[ident] of str15=
+      ('name', '', ';', 'var', ',', ':', 'integer', '{', '}',
+      'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
+      '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
+      'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'cmReturn', '');
+
+
+{ТИПЫ}
+Type
+     tArrayInfo = record
+                    data: pointer;
+                    size: word;
+                    Type_: Ident;
+                end;
+     pValue = ^tValue;
+     tValue = record {Универсальный тип для всего}
+                Case Type_:ident of
+                  cmInt: (i: Longint);
+                  cmString: (s: pointer);
+                  cmBool: (b: boolean);
+                  cmChar: (c: char);
+                  cmFloat: (f: real);
+                  cmArray: (a: ^tArrayInfo);
+                  cmVar: (v: pValue);
+              end;
+     pTree = ^tTree; {Дерево операций}
+
+     {Типы массивов и ссылки на них}
+     pVarArray = ^tVarArray;
+     tVarArray = array[1..Max_Items] of tValue;
+     tCharArray = array[0..65000] of char;
+     pCharArray = ^tCharArray;
+     pIntArray = ^tIntArray;
+     tIntArray = array[1..32500] of integer;
+     pTreeArray = ^tTreeArray;
+     tTreeArray = array[1..16000] of pTree;
+     pPointerArray = ^tPointerArray;
+     tPointerArray = array[1..16000] of pValue;
+     pInteger = ^Integer;
+
+     tTree = record
+               case Typ:ident of
+                 cmOper: (op: ident; left, right: pTree);
+                 cmVar: (index: integer; num: pTree);
+                 cmConst: (Value: tValue);
+             end;
+     pFunc = ^tFunc;
+     pVars = ^tVars;
+     pNode = ^tNode; {Основной тип лексем}
+     tNode = record
+               Typ: ident;
+               next: pNode;
+               case Type_:ident of
+                 cmIF:(op: pTree; Then_, Else_: pNode);
+                 cmWrite:(tree: pTree);
+                 cmIdent:(treeVar, treeIndex: pTree; index: integer);
+                 cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: integer;);
+                 cmWhile: (opWhile: pTree; doWhile_: pNode);
+                 cmRead: (indexRead: integer; indexArrayRead: pTree);
+                 cmFunc: (indexFunc: pFunc; vars: pointer);
+             end;
+     tVarName = array[1..50] of str15; {Массив названий переменных}
+     tVar = record {Запись ячеек переменных}
+              name: str15;
+              value: tValue;
+            end;
+     tVars = record
+               name: str15;
+               type_: ident;
+               max_size: word;
+               typeArray: ident;
+               next: pVars;
+             end;
+     tFunc = record {Тип списка функций}
+               name: str15;
+               tree: pNode;
+               vars: pVars;
+               performans: byte;
+               return: tValue;
+               next: pFunc;
+             end;
+     pStack = ^tStack;
+     tStack = record {Тип стека локальных переменных}
+                var_: pointer;
+                next: pStack;
+              end;
+
+{ПЕРЕМЕННЫЕ}
+var f: text; {Открытие файла .b}
+    st: string; {Используется в GetLex как строка}
+    ID: set of char; {Множество для возможных знаков идентефикатора}
+    Ch: ident; {Лексемы}
+    Lex: string; {Лексема в виде строки}
+    LexNum: integer; {Лексема в виде числа}
+    LexNumFloat: real; {Лексема в виде вещественного числа}
+    VarName: pVars; {Переменная всех временных названий в var}
+    Var_:pointer; {Сами переменные}
+    Code: pFunc; {Указатель на начало списка лексем для интерпретатора}
+    LineFile, Symbol: integer; {Строка в прочитанном файле}
+    Func: pFunc; {Последняя функция}
+    stack: pStack; {Стек локальных переменных}
+
+Function OrExpr: pTree; forward;
+Function AndExpr: pTree; forward;
+Function NotExpr: pTree; forward;
+Function CompareExpr: pTree; forward;
+Function Expression: pTree; forward;
+Function Term: pTree; forward;
+Function Factor: pTree; forward;
+Function Operator:pNode; forward;
+Procedure EvalTree(p: pTree; var Res: tValue); forward;
+Procedure Interpretator(p: pNode); forward;
+
+{Процедура вывода ошибки}
+Procedure Error(err: string);
+begin
+  writeln('Строка: ', LineFile);
+  writeln(err);
+  halt(1);
+end;
+
+{Функция получения индекса переменной}
+Function GetIndex(id: string):integer;
+var i: integer;
+    tz: pVars;
+begin
+  tz := Func^.vars;
+
+  if tz <> nil then
+  begin
+    i := 1;
+    while tz <> nil do
+    begin
+      if tz^.name = id then
+      begin
+        GetIndex := i;
+        exit;
+      end;
+      tz := tz^.next;
+      inc(i);
+    end;
+  end;
+
+  tz := VarName;
+
+  if tz <> nil then
+  begin
+    i := 1;
+    while tz <> nil do
+    begin
+      if tz^.name = id then
+      begin
+        GetIndex := -i;
+        exit;
+      end;
+      tz := tz^.next;
+      inc(i);
+    end;
+  end;
+
+  Error('Нет такого идентефикатора' + id);
+end;
+
+{Функция получения типа от имени}
+Function GetType(id: string):ident;
+var i: integer;
+    tz: pVars;
+begin
+  tz := Func^.vars;
+
+  if tz <> nil then
+  begin
+    i := 1;
+    while tz <> nil do
+    begin
+      if tz^.name = id then
+      begin
+        GetType := tz^.type_;
+        exit;
+      end;
+      tz := tz^.next;
+      inc(i);
+    end;
+  end;
+
+  tz := VarName;
+
+  if tz <> nil then
+  begin
+    i := 1;
+    while tz <> nil do
+    begin
+      if tz^.name = id then
+      begin
+        GetType := tz^.type_;
+        exit;
+      end;
+      tz := tz^.next;
+      inc(i);
+    end;
+  end;
+
+  Error('Нет такого идентефикатора' + id);
+end;
+
+{!Процедура вывода списка лексем}
+Procedure WriteList(p: pNode);
+begin
+  while p<>nil do
+  begin
+    case p^.typ of
+      cmFor: writeln('for');
+      cmIf: writeln('if');
+    end;
+    p := p^.next;
+  end;
+  writeln;
+end;
+
+{Процедура добавления новой лексемы к последней}
+Procedure AddElem(var Last: pNode; Elem: pNode);
+begin
+  Last^.next := Elem;
+  Last := Last^.next;
+end;
+
+{Процедура создания новой переменной}
+Function NewElem(Typ: ident):pNode;
+var tz: pNode;
+begin
+  new(tz);
+  tz^.next := nil;
+  tz^.typ := typ;
+  tz^.Type_ := typ;
+
+  NewElem := tz;
+end;
+
+{Создание нового звена функции}
+Function NewFunc(name: str15):pFunc;
+var tz: pFunc;
+begin
+  new(tz);
+  tz^.next := nil;
+  tz^.name := name;
+  tz^.tree := nil;
+  tz^.vars := nil;
+
+  NewFunc := tz;
+end;
+
+{Процедура получения лексемы}
+Function GetLex:ident;
+var i, code: integer;
+    ii: ident;
+    float: boolean;
+begin
+  float := False;
+
+  while (st='') and not(eof(f)) do {Пока строки пустые}
+  begin
+    readln(f, st);
+    inc(LineFile);
+  end;
+  i := 1;
+  while st[i] = ' ' do {Пока идут пробелы}
+    inc(i);
+
+  delete(st, 1, i-1);
+  i := 1;
+
+  if (st = '') and not(eof(f)) then 
+  begin
+    GetLex := GetLex;
+    exit;
+  end;
+
+  case st[1] of
+    '<', '>','=','!','/': begin
+                if st[2] in ['>', '=', '/'] then i := 2
+                else i := 1;
+                Lex := Copy(st, 1, i);
+                Delete(st, 1, i);
+              end;
+    ':',';',',','{','}','(',')','[',']','+','-','*','%':
+    begin
+      Lex := copy(st,1,1);
+      Delete(st, 1, 1);
+    end;
+    '0'..'9': begin
+                while st[i] in ['0'..'9', '.'] do
+                begin
+                  inc(i);
+                  if st[i] = '.' then Float := True;
+                end;
+                if float then
+                begin
+                  Lex := Copy(st, 1, i-1);
+                  Val(lex, LexNumFloat, code);
+                  if code < 0 then Error('Неверно запиисана цифра: ' + lex);
+                  Delete(st, 1, i-1);
+                  GetLex := cmNumberFloat;
+                  exit;
+                end;
+                Lex := Copy(st, 1, i-1);
+                Val(lex, LexNum, code);
+                Delete(st, 1, i-1);
+                GetLex := cmNumber;
+                exit;
+              end;
+    '"': begin
+           Delete(st, 1, 1);
+           while st[i] <> '"' do
+                  inc(i);
+           Lex := Copy(st, 1, i-1);
+           Delete(st, 1, i);
+           GetLex := cmConst;
+           exit;
+         end;
+    '#': begin
+           Delete(st, 1, length(st));
+           GetLex := GetLex;
+         end;
+    else
+    begin
+      if st[1] in ID then {Собираем символы идентефикатора}
+      begin
+        while st[i] in ID do
+          inc(i);
+        Lex := copy(st, 1, i-1);
+        Delete(st, 1, i-1);
+      end
+      else Error('Недопустимый символ "' + lex + '"');
+    end;
+  end;
+  Symbol := Symbol + i;
+
+  ii := cmName;
+  while (mainLex[ii] <> Lex) and (byte(ii) < MaxLex) do {Перебираем лексемы}
+    inc(ii);
+  GetLex := ii;
+end;
+
+{Процедура обработки раздела var}
+Procedure SectionVar;
+var i: integer;
+    type_, typeArray: ident;
+    tz: pVars;
+    numNames: integer;
+begin
+  While ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] do
+  begin
+    new(VarName); tz := VarName; tz^.next := nil;
+
+    type_ := ch;
+
+    numNames := 1;
+
+    ch := GetLex;
+    repeat
+      if ch = cmIdent then {Если имя - запомнить}
+      begin
+        tz^.name := Lex;
+        tz^.type_ := type_;
+      end
+      else if type_ = cmKSO then
+      begin
+        if ch = cmNumber then tz^.max_size := LexNum
+        else Error('Требуется число!');
+
+        ch := GetLex; 
+        if ch in [cmKSC] then ch := GetLex
+        else Error('Требуется ]!');
+
+        if ch in [cmInt,cmString,cmBool,cmFloat,cmChar] then typeArray := ch
+        else Error('Требуется тип!');
+        
+        ch := GetLex;
+        if ch = cmIdent then 
+        begin
+          tz^.name := lex; tz^.type_ := cmArray; tz^.typeArray := typeArray;
+        end
+        else Error('Требуется идентефикатор!');
+
+      end;
+      Ch := GetLex;
+      if not(Ch in [cmTZ,cmZP,cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool,cmFunc])
+      then Error('Требуется ";"!'){Если не ; ,}
+      else if Ch <> cmTZ then
+      begin
+        ch := GetLex;
+        new(tz^.next); tz := tz^.next; tz^.next := nil;
+        inc(numNames);
+        if ch in [cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool] then
+          type_ := ch;
+      end;
+    until ch = cmTZ;
+
+    tz := VarName;
+
+    GetMem(var_, (numNames)*sizeof(tVar));
+
+    {Иначе переносим из временного хранилища имен все переменные}
+    for i := 1 to numNames do
+    begin
+      pVarArray(var_)^[i].Type_ := tz^.type_;
+      case tz^.Type_ of
+        {Для каждого типа рассматриваем свое значение}
+        cmInt: pVarArray(var_)^[i].i := 0;
+        cmString:
+        begin
+          Getmem(pVarArray(var_)^[i].s, sizeof(byte));
+          FillChar(pVarArray(var_)^[i].s^, sizeof(byte), 0);
+        end;
+        cmBool: pVarArray(var_)^[i].b := False;
+        cmChar: pVarArray(var_)^[i].c := #0;
+        cmFloat: pVarArray(var_)^[i].f := 0;
+        {Для массива это все}
+        cmArray:
+        begin
+          pVarArray(var_)^[i].Type_ := cmArray;
+
+          new(pVarArray(var_)^[i].a);
+
+          pVarArray(var_)^[i].a^.Size := tz^.max_size;
+
+          pVarArray(var_)^[i].a^.Type_ := typeArray;
+          GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
+          FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
+        end;
+      end;
+      tz := tz^.next;
+    end;
+  end;
+
+  ch := GetLex;
+end;
+
+{Функция сложения строк}
+Function PlusString(left, right:pointer):pointer;
+var SizeLeft, SizeRight, SizeTotal: byte;
+    p: pointer;
+begin
+  SizeLeft := byte(left^);
+  SizeRight := Byte(right^);
+  SizeTotal:= SizeLeft + SizeRight;
+
+  GetMem(p, SizeTotal + sizeof(byte));
+  byte(p^) := Sizetotal;
+
+  Move(pCharArray(left)^[1], pCharArray(p)^[sizeof(byte)], SizeLeft);
+  Move(pCharArray(right)^[1], pCharArray(p)^[sizeof(byte)+SizeLeft], SizeRight);
+
+  PlusString := p;
+end;
+
+{Функция присваивания значения строке}
+Function ValueString(s: string):pointer;
+var p: pointer;
+begin
+  GetMem(p, sizeof(byte) + length(s));
+  Move(s, p^, sizeof(char) + length(s));
+
+  ValueString := p;
+end;
+
+{!! Функции рекурсивного спуска.}
+Function OrExpr:pTree;
+var left, tz: pTree;
+    op: set of ident;
+begin
+  left := AndExpr;
+
+  op := [cmOr];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    ch := GetLex;
+    tz^.right := AndExpr;
+    left := tz;
+  end;
+
+  OrExpr := left;
+end;
+
+Function AndExpr:pTree;
+var left, tz: pTree;
+    op: set of Ident;
+begin
+  left := NotExpr;
+
+  op := [cmAnd];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    ch := GetLex;
+    tz^.right := NotExpr;
+    left := tz;
+  end;
+
+  AndExpr := left;
+end;
+
+Function NotExpr:pTree;
+var left, tz: pTree;
+    op: set of ident;
+begin
+  left := CompareExpr;
+
+  op := [cmNot];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    tz^.right := nil;
+    ch := GetLex;
+    left := tz;
+  end;
+
+  NotExpr := left;
+end;
+
+
+Function CompareExpr:pTree;
+var left, tz: pTree;
+    op: set of ident;
+begin
+  left := Expression;
+
+  op := [cmOpB, cmOpM, cmOpSr, cmOpNR];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    ch := GetLex;
+    tz^.right := Expression;
+    left := tz;
+  end;
+
+  CompareExpr := left;
+end;
+
+Function Expression:pTree;
+var left, tz: pTree;
+    op: set of ident;
+begin
+  left := Term;
+
+  op := [cmPlus, cmMinus];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    ch := GetLex;
+    tz^.right := Term;
+    left := tz;
+  end;
+
+  Expression := left;
+end;
+
+
+Function Term:pTree;
+var left, tz: pTree;
+    op: set of ident;
+begin
+  left := Factor;
+
+  op := [cmCdot, cmDiv, cmMod, cmFrac];
+
+  while ch in op do
+  begin
+    new(tz);
+    tz^.Typ := cmOper;
+    tz^.op := ch;
+    tz^.left := left;
+    ch := GetLex;
+    tz^.right := Factor;
+    left := tz;
+  end;
+
+  Term := left;
+end;
+
+
+Function Factor:pTree;
+var tz: pTree;
+    timeVar:pVars;
+begin
+  Case ch of
+    cmIdent: begin
+               new(tz);
+               tz^.index := GetIndex(Lex);
+
+               if tz^.index < 0 then
+               begin
+                 timeVar := VarName;
+                 while (timeVar^.name <> lex) and (timeVar <> nil) 
+                 do timeVar := timeVar^.next;
+               end
+               else
+               begin
+                 timeVar := func^.Vars;
+                 while (timeVar^.name <> lex) and (timeVar <> nil)
+                 do timeVar := timeVar^.next;
+               end;
+
+               tz^.Typ := cmVar;
+
+               if timeVar^.Type_ = cmArray then
+               begin
+                 ch := GetLex;
+                 if ch = cmKSO then
+                 begin
+                   ch := GetLex;
+                   tz^.num := OrExpr;
+                   if ch <> cmKSC then Error('Требуется "]"!');
+                 end
+               end;
+             end;
+    cmConst: begin
+               new(tz);
+               tz^.Typ := cmConst;
+               tz^.value.Type_ := cmString;
+               tz^.value.s := ValueString(lex);
+               if length(lex) = 1 then
+               begin
+                 tz^.value.Type_ := cmChar;
+                 tz^.value.c := lex[1];
+               end;
+             end;
+    cmNumber:begin
+               new(tz);
+               tz^.Typ := cmConst;
+               tz^.value.Type_ := cmInt;
+               tz^.value.i := LexNum;
+             end;
+    cmNumberFloat:begin
+               new(tz);
+               tz^.Typ := cmConst;
+               tz^.value.Type_ := cmFloat;
+               tz^.value.f := LexNumFloat;
+             end;
+    cmSO: begin
+            ch := GetLex;
+            tz := OrExpr;
+
+            if ch <> cmSC then Error('Требуется скобка!')
+          end;
+    cmNot:begin
+            ch := GetLex;
+            tz := OrExpr;
+
+            tz^.Typ := cmOper;
+            tz^.op := ch;
+
+            if ch <> cmSC then Error('Требуется скобка!')
+          end;
+  end;
+
+  Factor := tz;
+
+  ch := GetLex;
+end;
+{!! Конец функций рекурсивного спуска}
+
+{!!! РАЗДЕЛ С ПОСТРОЕНИЕМ ДЕРЕВА}
+
+{Обработка команды переменных}
+procedure CommandVar(var Last: pNode; index: integer);
+var 
+    val: pVars;
+begin
+  AddElem(Last, NewElem(cmIdent));
+
+  if index < 0 then
+  begin
+    val := VarName;
+
+    while (val <> nil) and (val^.name <> lex) do val := val^.next;
+  end
+  else
+  begin
+    val := Func^.vars;
+
+    while (val <> nil) and (val^.name <> lex) do val := val^.next;
+  end;
+
+  ch := GetLex;
+
+  if val^.Type_ = cmArray then
+  begin
+    if ch = cmKSO then ch := GetLex
+    else Error('Требуется "["!');
+
+    Last^.TreeIndex := OrExpr;
+
+    if ch = cmKSC then ch := GetLex
+    else Error('Требуется "]"!');
+  end;
+
+  if ch = cmRavno then
+  begin
+    ch := GetLex;
+    Last^.treeVar := OrExpr;
+    Last^.index := index;
+  end
+  else Error('Требуется "="!');
+end;
+
+procedure CommandFunc(var Last: pNode; index: pFunc);
+var 
+    i, iVar: integer;
+    tz, timeVar: pVars;
+begin
+  AddElem(Last, NewElem(cmFunc));
+
+  if index^.performans > 0 then
+  begin
+    ch := GetLex;
+    if ch = cmSO then ch := GetLex
+    else Error('Требуется (!');
+
+    GetMem(Last^.vars, sizeof(pTree)*index^.performans);
+
+    tz := index^.vars;
+
+    for i := 1 to index^.performans do
+    begin
+      if ch in [cmIdent, cmNumber] then
+      begin
+        {pIntArray(Last^.vars)^[i] := GetIndex(lex);}
+        if tz^.type_ = cmVar then
+        begin
+          iVar := GetIndex(lex);
+          new(pTreeArray(Last^.vars)^[i]);
+          pTreeArray(Last^.vars)^[i]^.typ := cmConst;
+          pTreeArray(Last^.vars)^[i]^.Value.Type_ := cmInt;
+          pTreeArray(Last^.vars)^[i]^.value.i := iVar;
+
+          if iVar < 0 then
+          begin
+            timeVar := VarName;
+
+            while (timeVar <> nil) and (timeVar^.name <> lex) do
+              timeVar := timeVar^.next;
+          end
+          else
+          begin
+            timeVar := func^.vars;
+
+            while (timeVar <> nil) and (timeVar^.name <> lex) do
+              timeVar := timeVar^.next;
+          end;
+
+          if TimeVar^.type_ = cmArray then
+          begin
+            ch := GetLex;
+
+          end;
+
+          ch := GetLex;
+        end
+        else pTreeArray(Last^.vars)^[i] := orExpr
+      end
+      {ТУТ ДОПИСАТЬ ЛОГИКУ ПРОВЕРКИ ТИПОВ}
+      else Error('Требуется переменная!');
+
+      if ch in [cmZP, cmSC] then ch := GetLex
+      else Error('Требуется ,!');
+
+      tz := tz^.next;
+    end;
+  end;
+
+  Last^.indexFunc := index;
+end;
+
+
+{Процедура обработки идентефикаторов(функции/переменные}
+procedure CommandIdent(var Last: pNode);
+var tz: pFunc;
+    i: integer;
+    tzVars: pVars;
+begin
+  i := 1;
+  tzVars := Func^.vars;
+  if tzVars <> nil then
+  begin
+    while tzVars <> nil do
+    begin
+      if tzVars^.name = lex then
+      begin
+        CommandVar(Last, i);
+        exit;
+      end;
+      tzVars := tzVars^.next;
+      inc(i);
+    end;
+  end;
+
+  i := 1;
+  tzVars := VarName;
+  if tzVars <> nil then
+  begin
+    while tzVars <> nil do
+    begin
+      if tzVars^.name = lex then
+      begin
+        CommandVar(Last, -i);
+        exit;
+      end;
+      tzVars := tzVars^.next;
+      inc(i);
+    end;
+  end;
+
+  tz := code;
+
+  while tz <> nil do
+  begin
+    if tz^.name = lex then
+    begin
+      CommandFunc(last, tz);
+      exit;
+    end;
+
+    tz := tz^.next;
+  end;
+
+  Error('Нет такого идентефикатора: ' + lex);
+end;
+
+{Процедура обработки команды вывода write}
+procedure CommandWrite(var Last: pNode);
+begin
+  AddElem(Last, NewElem(ch));
+
+  ch := GetLex;
+  if ch = cmSO then ch := GetLex
+  else error('Требуется "("!');
+  Last^.tree := OrExpr;
+  if ch = cmSC then ch := GetLex
+  else error('Требуется ")"!');
+end;
+
+{Обработка оператора if}
+procedure OperatorIf(var Last: pNode);
+begin
+  AddElem(Last, NewElem(cmIf));
+
+  ch := GetLex;
+  Last^.op := OrExpr;
+  if ch = cmThen then ch := GetLex
+  else Error('Требуется then!');
+  if ch = cmFSO then Last^.then_ := Operator
+  else Error('Требуется "{"!');
+  ch := GetLex;
+  Last^.else_ := nil;
+  if ch = cmElse then
+  begin
+    ch := GetLex;
+    if ch = cmFSO then Last^.else_ := Operator
+    else Error('Требуется "{"!');
+    ch := GetLex;
+  end
+end;
+
+
+{Функция оператора for}
+procedure OperatorFor(var Last: pNode);
+begin
+  AddElem(Last, NewElem(cmFor));
+
+  ch := GetLex;
+  if ch = cmIdent then
+  begin
+    Last^.indexFor := GetIndex(Lex);
+    ch := GetLex
+  end
+  else Error('Требуется идентефикатор!');
+  if ch = cmRavno then
+  begin
+    ch := GetLex;
+    Last^.varFor := OrExpr;
+  end
+  else Error('Требуется "="!');
+  if ch = cmTo then
+  begin
+    ch := GetLex;
+    Last^.opFor := orExpr;
+  end
+  else Error('Требуется "to"!');
+  if ch = cmDo then
+  begin
+    ch := GetLex;
+    Last^.do_ := nil;
+    if ch = cmFSO then Last^.do_ := Operator
+    else Error('Требуется "{"!');
+  end
+  else Error('Требуется "do"!');
+  ch := GetLex;
+end;
+
+{Обработка цикла while}
+Procedure OperatorWhile(var Last: pNode);
+begin
+  AddElem(Last, NewElem(cmWhile));
+
+  ch := GetLex;
+  Last^.OpWhile := OrExpr;
+
+  if ch = cmDo then ch := GetLex
+  else Error('Требуется "do"!');
+  if ch = cmFSO then Last^.doWhile_ := Operator
+  else Error('Требуется "{"!');
+
+  ch := GetLex;
+end;
+
+{Обработка команды read}
+procedure CommandRead(var Last: pNode);
+begin
+  AddElem(Last, NewElem(cmRead));
+
+  ch := GetLex;
+  if ch = cmSO then ch := GetLex
+  else Error('Требуется "("!');
+  if ch = cmIdent then Last^.indexRead := GetIndex(Lex);
+  Last^.indexArrayRead := nil;
+ 
+  if GetType(lex) = cmArray then 
+  begin
+    ch := getLex; 
+    if ch = cmKSO then ch := GetLex
+    else Error('Требуется [!');
+
+    Last^.indexArrayRead := orExpr;
+  end; 
+
+  ch := GetLex;
+
+  if ch = cmSC then ch := GetLex
+  else Error('Требуется ")"!');
+end;
+
+{Процедура обработки команды функции}
+Procedure ComandFunc(var p, Last: pFunc);
+var main: pFunc;
+    tz: pVars;
+    type_, typeArray: ident;
+    i: byte;
+begin
+  main := NewFunc('main');
+  p := main;
+  Last := main;
+
+  while ch = cmFunc do
+  begin
+    ch := GetLex;
+    if lex = 'main' then Last := main
+    else
+    begin
+      if ch = cmIdent then last^.next := NewFunc(lex)
+      else Error('Требуется имя функции!');
+      Last := Last^.next;
+    end;
+
+    i := 0;
+
+    ch := GetLex;
+    if ch = cmSO then
+    begin
+      new(Last^.vars); tz := Last^.vars; tz^.next := nil;
+      ch := GetLex;
+      while ch in [cmInt,cmString,cmFloat,cmBool,cmChar,cmKSO,cmVar] do
+      begin
+        type_ := ch;
+
+        if ch = cmVar then ch := GetLex;
+
+        if ch = cmKSO then
+        begin
+          type_ := cmArray;
+          ch := GetLex;
+          if ch <> cmNumber then Error('Требуется число!');
+          ch := GetLex;
+          if ch = cmKSC then ch := GetLex
+          else Error('Требуется ]!');
+
+          typeArray := ch;
+        end;
+
+        ch := getLex;
+        while ch in [cmIdent] do
+        begin
+          tz^.Type_ := type_; inc(i);
+          if type_ = cmArray then
+          begin
+            tz^.max_size := lexNum;
+            tz^.typeArray := typeArray;
+          end;
+          if ch = cmIdent then tz^.name := lex
+          else Error('Требуется имя переменной!');
+
+          ch := GetLex;
+          if ch = cmZP then
+          begin
+            new(tz^.next); tz := tz^.next; tz^.next := nil;
+            ch := GetLex;
+          end
+          else if ch = cmTZ then begin
+            ch := GetLex;
+            new(tz^.next); tz := tz^.next; tz^.next := nil;
+          end;
+        end;
+      end;
+
+      if ch = cmSC then ch := GetLex
+      else Error('Требуется )!');
+    end;
+
+    Last^.performans := i;
+
+    if ch = cmFSO then Last^.tree := operator
+    else Error('Требуется {!');
+
+    ch := GetLex;
+    if ch = cmTZ then ch := GetLex;
+  end;
+end;
+
+{Обработка команды создания переменной}
+procedure CommandCreateVar(var Last: pNode);
+var tz: pVars;
+    type_, typeArray: ident;
+begin
+  {Добавляем новый элемент в цепочке команд и сохраняем тип}
+  AddElem(Last, NewElem(cmVar));
+  type_ := ch;
+  if ch = cmKSO then
+  begin
+    type_ := cmArray;
+    ch := GetLex;
+    if ch <> cmNumber then Error('Требуется число!');
+    ch := GetLex;
+    if ch <> cmKSC then Error('Требуется ]!');
+    ch := GetLex;
+    if ch in [cmInt,cmFloat,cmBool,cmChar,cmString] then TypeArray := ch
+    else Error('Требуется тип!');
+  end;
+
+  {проверяем на то, есть ли уже переменные в функции. если есть - добираемся
+  до их конца, а если нет - создаем}
+  ch := GetLex;
+
+  if Func^.vars = nil then
+  begin
+    new(Func^.vars);
+    tz := Func^.Vars;
+  end
+  else
+  begin
+    tz := Func^.Vars;
+    while tz^.next <> nil do tz := tz^.next;
+
+    new(tz^.next); tz := tz^.next;
+  end;
+
+  tz^.max_size := LexNum;
+
+  repeat
+    if ch = cmIdent then {Если имя - запомнить}
+    begin
+      tz^.name := lex; tz^.type_ := type_; tz^.next := nil;
+      tz^.typeArray := typeArray;
+    end;
+    Ch := GetLex;
+    if not(Ch in [cmZP, cmTZ]) then Error('Требуется ":"!'){Если не , :}
+    else if Ch = cmZP then
+    begin
+      ch := GetLex;
+      new(tz^.next); tz := tz^.next;
+    end;
+  until ch = cmTZ; {ch = :}
+end;
+
+
+{Процедура обработки тела всего угодно}
+Function Operator:pNode;
+var Last: pNode;
+begin
+  Last := NewElem(cmName);
+  Operator := Last;
+  repeat
+    ch := GetLex;
+    case ch of
+      cmWrite, cmWriteLn: CommandWrite(Last);
+      cmIf: OperatorIf(Last);
+      cmFor: OperatorFor(Last);
+      cmIdent: CommandIdent(Last);
+      cmWhile: OperatorWhile(Last);
+      cmRead: CommandRead(Last);
+      cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO: CommandCreateVar(Last);
+      cmElse: Error('Ошибка в операторе!');
+    end;
+
+    if not(ch in [cmTZ, cmFSC]) then Error('Требуется ";"!');
+  until Ch = cmFSC;
+  Last^.next := nil;
+end;
+
+
+{!!! РАЗДЕЛ С ИНТЕРПРЕТАЦИЕЙ ДЕРЕВА}
+
+{Получаем результат вычислений(математика/логика)}
+procedure AddVal(L, R: tValue; var Res: tValue; op: ident);
+begin
+  {Смотрим на логические операции}
+  if op in [cmAnd, cmOr, cmNot] then
+  begin
+    if (L.Type_ <> cmBool) or (R.Type_ <> cmBool) then
+      Error('Логические операции возможны только для boolean!');
+
+    Res.Type_ := cmBool;
+
+    case op of
+      cmAnd: Res.b := L.b and R.b;
+      cmOr: Res.b := L.b or R.b;
+      cmNot: Res.b := not(L.b);
+    end;
+    Exit;
+  end;
+
+  {Проверяем соответствие типов}
+  if L.Type_ <> R.Type_ then Error('Несоответствие типов!');
+
+  {Проверяем на операции для флагов}
+  if op in [cmOpM, cmOpB, cmOpSr, cmOpBR, CmOpMR, cmOpNR] then
+  begin
+    Res.Type_ := cmBool;
+    case L.Type_ of
+      cmInt:
+      begin
+        case op of
+          cmOpB: Res.b := L.i > R.i;
+          cmOpM: Res.b := L.i < R.i;
+          cmOpSr: Res.b := L.i = R.i;
+          cmOpBR: Res.b := L.i >= R.i;
+          cmOpMr: Res.b := L.i <= R.i;
+          cmOpNR: Res.b := L.i <> R.i;
+        end;
+      end;
+      cmFloat:
+      begin
+        case op of
+          cmOpB: Res.b := L.f > R.f;
+          cmOpM: Res.b := L.f < R.f;
+          cmOpSr: Res.b := L.f = R.f;
+          cmOpBR: Res.b := L.f >= R.f;
+          cmOpMr: Res.b := L.f <= R.f;
+          cmOpNR: Res.b := L.f <> R.f;
+        end;
+      end;
+      cmString:
+      begin
+        case op of
+          cmOpSr: Res.b := L.s = R.s;
+          cmOpNR: Res.b := L.s <> R.s;
+          else Error('Для строк допустима только операция равенства.');
+        end;
+      end;
+    end;
+    exit;
+  end;
+
+  {Код для математики}
+  case L.Type_ of
+    cmInt: begin
+             case op of
+               cmPlus: Res.i := L.i + R.i;
+               cmMinus: Res.i := L.i - R.i;
+               cmCdot: Res.i := L.i * R.i;
+               cmDiv: Res.i := L.i div R.i;
+               cmMod: Res.i := L.i mod R.i;
+               else Error('Данная операция не поддерживается над типом integer.');
+             end;
+             Res.Type_ := cmInt;
+           end;
+    cmFloat:
+    begin
+      case op of
+        cmPlus: Res.f := L.f + R.f;
+        cmMinus: Res.f := L.f - R.f;
+        cmCdot: Res.f := L.f * R.f;
+        cmFrac: Res.f := L.f / R.f;
+      end;
+      Res.Type_ := cmFloat;
+    end;
+    cmString: begin
+                case op of
+                  cmPlus: Res.s := PlusString(l.s, r.s)
+                  else Error('Для строк невозможна данная операция!');
+                end;
+                Res.Type_ := cmString;
+              end;
+  end;
+end;
+
+{Получение значение переменной}
+Procedure ReturnValueVar(index: integer; pNum: pTree; var res: tValue);
+var num: tValue;
+    RealVar: tValue;
+begin
+  if index < 0 then RealVar := pVarArray(var_)^[abs(index)]
+  else RealVar := pVarArray(stack^.var_)^[index];
+
+  if RealVar.Type_ = cmArray then
+  begin
+    EvalTree(pNum, num);
+    if num.i > RealVar.a^.size-1 then
+      Error('Выход за пределы массива!');
+    res := pVarArray(RealVar.a^.data)^[num.i];
+    res.Type_ := RealVar.a^.Type_;
+  end
+  else if RealVar.Type_ = cmVar then Res := RealVar.v^
+  else res := RealVar;
+end;
+
+{Процедура затирания дерева}
+{Procedure DisposeTree(p: pTree);
+begin
+  if p <> nil then
+  begin
+    if p^.typ = cmOper then 
+    begin
+      DisposeTree(p^.right);
+      DisposeTree(p^.left);
+    end;
+
+    Dispose(p);
+  end
+  else writeln('Тут nil');
+end;}
+
+{Функция для обхода дерева и получения результата в следствии}
+Procedure EvalTree(p: pTree; var Res: tValue);
+var ResL, ResR: tValue;
+begin
+  if p <> nil then
+  begin
+    if p^.Typ = cmOper then {Если наш узел - операция, то рекурсивно}
+    begin
+      EvalTree(p^.left, ResL); {вызываемся обрабатывая каждую операцию}
+      EvalTree(p^.Right, ResR);
+      AddVal(ResL, ResR, Res, p^.op);
+    end
+    else begin {Если наш узел - не операция, то обрабатываем его как}
+           case p^.Typ of                {переменную/константу}
+             cmConst: Res := p^.value; {Конст - просто отдаем значение}
+             cmVar: ReturnValueVar(p^.index, p^.num, res);
+             {Идентефикатор - возвращаем значение переменной}
+           end;
+         end;
+  end;
+end;
+
+
+
+{Проверка на то, подходят ли разные типы друг другу.}
+function SoulTypes(type1, type2: ident):boolean;
+begin
+  SoulTypes := False;
+
+  if (type1 in [cmString]) and (type2 in [cmChar])
+  then SoulTypes := True;
+  if (type1 in [cmFloat]) and (type2 in [cmInt])
+  then SoulTypes := True;
+end;
+
+{Интерпретация использования идентефикаторов}
+procedure InterIdent(p: pNode);
+var val, index: tValue;
+    timeVar: pValue;
+begin
+  EvalTree(p^.treeVar, val);
+
+  if p^.index < 0 then timeVar := @pVarArray(var_)^[abs(p^.index)]
+  else timeVar := @pVarArray(stack^.var_)^[p^.index];
+
+  if timeVar^.Type_ = cmVar then timeVar := timeVar^.v;
+
+  if timeVar^.Type_ = cmArray then
+  begin
+    EvalTree(p^.treeIndex, Index);
+    if index.i >= timeVar^.a^.size then
+      Error('Выход за пределы массива!');
+
+    if timeVar^.a^.Type_ <> val.Type_ then
+      Error('Несоответствие типов.')
+    else
+      pVarArray(timeVar^.a^.data)^[index.i] := val;
+  end
+  else if ((timeVar^.Type_ = val.Type_) or SoulTypes(timeVar^.Type_, val.Type_)) then
+         timeVar^ := val
+  else Error('Несоответствие типов.')
+end;
+
+{Интерпретация for}
+procedure InterFor(pFor: pNode);
+var val: tValue;
+    timeVar: ^tValue;
+begin
+  EvalTree(pFor^.varFor, val);
+
+  if pFor^.indexFor < 0 then timeVar := @pVarArray(var_)^[abs(pFor^.indexFor)]
+  else timeVar := @pVarArray(stack^.var_)^[pFor^.indexFor];
+
+  if (timeVar^.Type_ <> val.Type_) or (val.Type_ <> cmInt)
+  then Error('Требуется тип integer.')
+  else timeVar^ := val;
+
+  EvalTree(pFor^.opFor, val);
+  if val.Type_ <> cmInt then Error('Требуется тип integer.');
+
+  while timeVar^.i <= val.i do
+  begin
+    Interpretator(pFor^.do_);
+    inc(timeVar^.i);
+  end;
+end;
+
+{Процедура интерпретации цикла while}
+Procedure InterWhile(p: pNode);
+var val: tValue;
+begin
+  Evaltree(p^.opWhile, val);
+
+  if val.Type_ <> cmBool then Error('Недопустимый тип.');
+
+  while val.b do
+  begin
+    Interpretator(p^.doWhile_);
+    Evaltree(p^.opWhile, val);
+  end;
+end;
+
+{Процедура интерпретации оператора ввода}
+Procedure InterWrite(p: pNode);
+var val: tValue;
+begin
+  EvalTree(p^.tree, val);
+  case val.Type_ of
+    cmInt: Write(val.i);
+    cmString: Write(string(val.s^));
+    cmBool: Write(val.b);
+    cmChar: Write(val.c);
+    cmFloat: Write(val.f:0:2);
+  end;
+end;
+
+{Процедура интерпретации оператора ввода с новой строкой}
+Procedure InterWriteln(p: pNode);
+var val: tValue;
+begin
+  EvalTree(p^.tree, val);
+  case val.Type_ of
+    cmInt: Writeln(val.i);
+    cmString: Writeln(string(val.s^));
+    cmBool: Writeln(val.b);
+    cmChar: Writeln(val.c);
+    cmFloat: Writeln(val.f:0:2);
+  end;
+end;
+
+
+{Процедура интерпретации оператора ветвления}
+Procedure InterIf(p: pNode);
+var val: tValue;
+begin
+  EvalTree(p^.op, val);
+  if val.b = True then Interpretator(p^.then_)
+  else if p^.else_ <> nil then Interpretator(p^.else_);
+end;
+
+{Процедура интерпретации оператора ввода}
+procedure InterRead(p: pNode);
+var timeVar: pValue; indexArray: tValue; type_: ident;
+begin
+  if p^.indexRead < 0 then timeVar := @pVarArray(var_)^[abs(p^.indexRead)]
+  else timeVar := @pVarArray(stack^.var_)^[p^.indexRead];
+
+  {Обработка переменной массива}
+  if timeVar^.type_ = cmArray then
+  begin
+    EvalTree(p^.indexArrayRead, indexArray); type_ := timeVar^.typeArray; 
+    timeVar := pValue(@pVarArray(timeVar^.a^.data)^[indexArray.i]);
+    timeVar^.type_ := type_;
+  end;
+
+  case timeVar^.Type_ of
+    cmInt: read(timeVar^.i);
+    cmString: read(string(timeVar^.s^));
+    cmChar: read(timeVar^.c);
+    cmFloat: read(timeVar^.f)
+    else Error('Нельзя считать переменную данного типа!');
+  end;
+end;
+
+{Обработка команды функций}
+Procedure InterFunc(p: pFunc; Last: pNode);
+var timeStack: pStack;
+    i, numb: integer;
+    vr: tValue;
+    tz: pVars;
+begin
+  new(timeStack); timeStack^.next := stack; stack := timeStack;
+
+  numb := 0;
+  tz := p^.vars;
+  while tz <> nil do
+  begin
+    inc(numb);
+    tz := tz^.next;
+  end;
+
+  GetMem(stack^.var_, numb*sizeof(tValue));
+  tz := p^.vars;
+  i := 1;
+  while tz <> nil do
+  begin
+    pVarArray(stack^.var_)^[i].Type_ := tz^.Type_;
+
+    if tz^.type_ = cmArray then
+    begin
+      new(pVarArray(stack^.var_)^[i].a);
+      GetMem(pVarArray(stack^.var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
+      pVarArray(stack^.var_)^[i].a^.Type_ := tz^.typeArray;
+      pVarArray(stack^.var_)^[i].a^.size := tz^.max_size;
+    end;
+
+    if p^.performans >= i then
+    begin
+      if tz^.Type_ = cmVar then
+      begin
+        EvalTree(pTreeArray(Last^.vars)^[i], vr);
+        if vr.i < 0 then
+          pVarArray(Stack^.var_)^[i].v := @pVarArray(var_)^[abs(vr.i)]
+        else
+        begin
+          if pVarArray(stack^.next^.var_)^[vr.i].type_ = cmVar then
+          begin
+            pVarArray(Stack^.var_)^[i].v := pVarArray(stack^.next^.var_)^[vr.i].v
+          end
+          else
+          pVarArray(Stack^.var_)^[i].v := @pVarArray(stack^.next^.var_)^[vr.i]
+        end;
+      end
+      else
+      begin
+        timeStack := stack;
+        stack := stack^.next;
+        EvalTree(pTreeArray(Last^.vars)^[i], pVarArray(timeStack^.var_)^[i]);
+        stack := timeStack
+      end;
+    end;
+
+    inc(i);
+    tz := tz^.next;
+  end;
+
+  Interpretator(p^.tree);
+
+  FreeMem(stack^.var_, numb*sizeof(tValue));
+  TimeStack := stack;
+  stack := stack^.next;
+  dispose(TimeStack);
+end;
+
+{Процедура выполнения команд}
+procedure Interpretator(p: pNode);
+begin
+  while p <> nil do
+  begin
+    case p^.Typ of
+      cmWrite: InterWrite(p);
+      cmWriteln: InterWriteLn(p);
+      cmIf: InterIf(p);
+      cmIdent: InterIdent(p);
+      cmFunc: InterFunc(p^.indexFunc, p);
+      cmFor: InterFor(p);
+      cmWhile: InterWhile(p);
+      cmRead: InterRead(p);
+    end;
+    p := p^.next;
+  end;
+end;
+
+begin
+  {Инициализация переменных}
+  ID := ['a'..'z', '0'..'9'];
+
+  New(code);
+  Code^.next := nil;
+
+  {Открытие файла}
+  assign(f, 'BLENG/main.b');
+  reset(f);
+
+  ch := GetLex;
+  if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
+  if ch = cmFunc then ComandFunc(Code, func);
+
+  InterFunc(Code, nil); {Вызываем выполнение команд}
+
+  close(f);
+end.
