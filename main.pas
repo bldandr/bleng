@@ -112,6 +112,7 @@ var f: text; {Открытие файла .b}
     LexNumFloat: real; {Лексема в виде вещественного числа}
     VarName: pVars; {Переменная всех временных названий в var}
     Var_:pointer; {Сами переменные}
+    VarSize: word; {Колво глобальных переменных}
     Code: pFunc; {Указатель на начало списка лексем для интерпретатора}
     LineFile, Symbol: integer; {Строка в прочитанном файле}
     Func: pFunc; {Последняя функция}
@@ -428,6 +429,7 @@ begin
 
     tz := VarName;
 
+    VarSize := VarSize + numNames;
     GetMem(var_, (numNames)*sizeof(tVar));
 
     {Иначе переносим из временного хранилища имен все переменные}
@@ -461,9 +463,8 @@ begin
       end;
       tz := tz^.next;
     end;
+    ch := GetLex;
   end;
-
-  ch := GetLex;
 end;
 
 {Функция сложения строк}
@@ -1456,7 +1457,7 @@ end;
 
 {Зачистка переменных в памяти}
 procedure DisposeVar(p: pointer; size: integer);
-var i: integer;
+var i, sizeString: integer;
 begin
   for i := 1 to size do
   begin
@@ -1467,7 +1468,8 @@ begin
       end;
       cmString:
       begin
-        Freemem(pVarArray(p)^[i].s, byte(pVarArray(p)^[i].s)+sizeof(char));
+        SizeString := byte(pVarArray(p)^[i].s^)+sizeof(char);
+        Freemem(pVarArray(p)^[i].s, SizeString);
       end;
     end;
   end; 
@@ -1580,6 +1582,9 @@ begin
   if ch = cmFunc then ComandFunc(Code, func);
 
   InterFunc(Code, nil); {Вызываем выполнение команд}
+
+  {Отчистка глобальных переменных}
+  DisposeVar(var_, varSize);
 
   close(f);
 end.
