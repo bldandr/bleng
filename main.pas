@@ -818,7 +818,8 @@ begin
 
       tz := tz^.next;
     end;
-  end;
+  end
+  else ch := GetLex;
 
   Last^.indexFunc := index;
 end;
@@ -1275,7 +1276,7 @@ begin
 end;
 
 {Процедура затирания дерева}
-{Procedure DisposeTree(p: pTree);
+Procedure DisposeTree(var p: pTree);
 begin
   if p <> nil then
   begin
@@ -1287,8 +1288,7 @@ begin
 
     Dispose(p);
   end
-  else writeln('Тут nil');
-end;}
+end;
 
 {Функция для обхода дерева и получения результата в следствии}
 Procedure EvalTree(p: pTree; var Res: tValue);
@@ -1454,6 +1454,26 @@ begin
   end;
 end;
 
+{Зачистка переменных в памяти}
+procedure DisposeVar(p: pointer; size: integer);
+var i: integer;
+begin
+  for i := 1 to size do
+  begin
+    case pVarArray(p)^[i].type_ of
+      cmArray:
+      begin
+        FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
+      end;
+      cmString:
+      begin
+        Freemem(pVarArray(p)^[i].s, byte(pVarArray(p)^[i].s)+sizeof(char));
+      end;
+    end;
+  end; 
+  FreeMem(p, size*sizeof(tValue));
+end;
+
 {Обработка команды функций}
 Procedure InterFunc(p: pFunc; Last: pNode);
 var timeStack: pStack;
@@ -1518,7 +1538,8 @@ begin
 
   Interpretator(p^.tree);
 
-  FreeMem(stack^.var_, numb*sizeof(tValue));
+  {Очистка переменных и элемента в стеке}
+  DisposeVar(stack^.var_, numb);
   TimeStack := stack;
   stack := stack^.next;
   dispose(TimeStack);
