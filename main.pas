@@ -569,7 +569,7 @@ var left, tz: pTree;
 begin
   left := Expression;
 
-  op := [cmOpB, cmOpM, cmOpSr, cmOpNR];
+  op := [cmOpB, cmOpM, cmOpSr, cmOpNR, cmOpMR, cmOpBR];
 
   while ch in op do
   begin
@@ -1267,7 +1267,7 @@ begin
   if RealVar.Type_ = cmArray then
   begin
     EvalTree(pNum, num);
-    if num.i > RealVar.a^.size-1 then
+    if num.i > RealVar.a^.size then
       Error('Выход за пределы массива!');
     res := pVarArray(RealVar.a^.data)^[num.i];
     res.Type_ := RealVar.a^.Type_;
