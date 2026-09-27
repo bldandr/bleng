@@ -131,8 +131,21 @@ Procedure Interpretator(p: pNode); forward;
 {Процедура вывода ошибки}
 Procedure Error(err: string);
 begin
-  writeln('Строка: ', LineFile);
-  writeln(err);
+  if not(eof(f)) then 
+  begin
+    writeln('-----------------------');
+    writeln('Ошибка интерпретации: ');
+    writeln(err);
+    writeln('Строка: ', LineFile);
+    writeln('-----------------------');
+  end
+  else 
+  begin
+    writeln('-----------------------');
+    writeln('Ошибка в рантайме: ');
+    writeln(err);
+    writeln('-----------------------');
+  end;
   halt(1);
 end;
 
