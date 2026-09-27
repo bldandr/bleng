@@ -1427,7 +1427,7 @@ begin
   {Обработка переменной массива}
   if timeVar^.type_ = cmArray then
   begin
-    EvalTree(p^.indexArrayRead, indexArray); type_ := timeVar^.typeArray; 
+    EvalTree(p^.indexArrayRead, indexArray); type_ := timeVar^.a^.type_; 
     timeVar := pValue(@pVarArray(timeVar^.a^.data)^[indexArray.i]);
     timeVar^.type_ := type_;
   end;
