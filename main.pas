@@ -135,19 +135,6 @@ begin
   Error('Нет такого идентефикатора' + id);
 end;
 
-{!Процедура вывода списка лексем}
-Procedure WriteList(p: pNode);
-begin
-  while p<>nil do
-  begin
-    case p^.typ of
-      cmFor: writeln('for');
-      cmIf: writeln('if');
-    end;
-    p := p^.next;
-  end;
-  writeln;
-end;
 
 {Процедура добавления новой лексемы к последней}
 Procedure AddElem(var Last: pNode; Elem: pNode);
