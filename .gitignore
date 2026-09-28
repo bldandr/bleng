@@ -1,9 +1,7 @@
 *.bak
 *.b
 *.o
+*.ppu
 main
-res.pas
-res2.pas
-test.pas
-time.pas
+
 

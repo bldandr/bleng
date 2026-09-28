@@ -2,105 +2,7 @@
 
 program qq;
 
-
-Type str15 = string[15];
-     Ident = (
-     cmName, cmNumber, cmTZ, cmVar, cmZP, cmTT, cmInt,
-     cmFSO, cmFSC, cmWrite, cmIF, cmSO, cmSC, cmConst, cmOper, cmString,
-     cmRavno, cmBool, cmOpSr, cmOpB, cmOpM, cmOpBR, cmOpMR,
-     cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
-     cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
-     cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmIdent);
-
-const MaxLex = 49; Max_Items = 8190;
-      MainLex: array[ident] of str15=
-      ('name', '', ';', 'var', ',', ':', 'integer', '{', '}',
-      'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
-      '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
-      'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'cmReturn', '');
-
-
-{ТИПЫ}
-Type
-     tArrayInfo = record
-                    data: pointer;
-                    size: word;
-                    Type_: Ident;
-                end;
-     pValue = ^tValue;
-     tValue = record {Универсальный тип для всего}
-                Case Type_:ident of
-                  cmInt: (i: Longint);
-                  cmString: (s: pointer);
-                  cmBool: (b: boolean);
-                  cmChar: (c: char);
-                  cmFloat: (f: real);
-                  cmArray: (a: ^tArrayInfo);
-                  cmVar: (v: pValue);
-              end;
-     pTree = ^tTree; {Дерево операций}
-
-     {Типы массивов и ссылки на них}
-     pVarArray = ^tVarArray;
-     tVarArray = array[1..Max_Items] of tValue;
-     tCharArray = array[0..65000] of char;
-     pCharArray = ^tCharArray;
-     pIntArray = ^tIntArray;
-     tIntArray = array[1..32500] of integer;
-     pTreeArray = ^tTreeArray;
-     tTreeArray = array[1..16000] of pTree;
-     pPointerArray = ^tPointerArray;
-     tPointerArray = array[1..16000] of pValue;
-     pInteger = ^Integer;
-
-     tTree = record
-               case Typ:ident of
-                 cmOper: (op: ident; left, right: pTree);
-                 cmVar: (index: integer; num: pTree);
-                 cmConst: (Value: tValue);
-             end;
-     pFunc = ^tFunc;
-     pVars = ^tVars;
-     pNode = ^tNode; {Основной тип лексем}
-     tNode = record
-               Typ: ident;
-               next: pNode;
-               case Type_:ident of
-                 cmIF:(op: pTree; Then_, Else_: pNode);
-                 cmWrite:(tree: pTree);
-                 cmIdent:(treeVar, treeIndex: pTree; index: integer);
-                 cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: integer;);
-                 cmWhile: (opWhile: pTree; doWhile_: pNode);
-                 cmRead: (indexRead: integer; indexArrayRead: pTree);
-                 cmFunc: (indexFunc: pFunc; vars: pointer);
-             end;
-     tVarName = array[1..50] of str15; {Массив названий переменных}
-     tVar = record {Запись ячеек переменных}
-              name: str15;
-              value: tValue;
-            end;
-     tVars = record
-               name: str15;
-               type_: ident;
-               max_size: word;
-               typeArray: ident;
-               next: pVars;
-             end;
-     tFunc = record {Тип списка функций}
-               name: str15;
-               tree: pNode;
-               vars: pVars;
-               performans: byte;
-               return: tValue;
-               next: pFunc;
-             end;
-     pStack = ^tStack;
-     tStack = record {Тип стека локальных переменных}
-                var_: pointer;
-                next: pStack;
-              end;
+Uses MyTypes;
 
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
@@ -113,11 +15,10 @@ var f: text; {Открытие файла .b}
     VarName: pVars; {Переменная всех временных названий в var}
     Var_:pointer; {Сами переменные}
     VarSize: word; {Колво глобальных переменных}
-    Code: pFunc; {Указатель на начало списка лексем для интерпретатора}
     LineFile, Symbol: integer; {Строка в прочитанном файле}
-    Func: pFunc; {Последняя функция}
     stack: pStack; {Стек локальных переменных}
 
+{Объявление пересекающихся функций}
 Function OrExpr: pTree; forward;
 Function AndExpr: pTree; forward;
 Function NotExpr: pTree; forward;
@@ -430,7 +331,7 @@ begin
     tz := VarName;
 
     VarSize := VarSize + numNames;
-    GetMem(var_, (numNames)*sizeof(tVar));
+    GetMem(var_, (numNames)*sizeof(tValue));
 
     {Иначе переносим из временного хранилища имен все переменные}
     for i := 1 to numNames do
@@ -777,7 +678,6 @@ begin
     begin
       if ch in [cmIdent, cmNumber] then
       begin
-        {pIntArray(Last^.vars)^[i] := GetIndex(lex);}
         if tz^.type_ = cmVar then
         begin
           iVar := GetIndex(lex);
