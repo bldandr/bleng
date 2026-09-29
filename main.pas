@@ -7,7 +7,6 @@ Uses MyTypes;
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
     st: string; {Используется в GetLex как строка}
-    ID: set of char; {Множество для возможных знаков идентефикатора}
     Ch: ident; {Лексемы}
     Lex: string; {Лексема в виде строки}
     LexNum: integer; {Лексема в виде числа}
@@ -1237,7 +1236,7 @@ begin
   if timeVar^.Type_ = cmArray then
   begin
     EvalTree(p^.treeIndex, Index);
-    if index.i >= timeVar^.a^.size then
+    if index.i > timeVar^.a^.size then
       Error('Выход за пределы массива!');
 
     if timeVar^.a^.Type_ <> val.Type_ then
@@ -1463,9 +1462,6 @@ begin
 end;
 
 begin
-  {Инициализация переменных}
-  ID := ['a'..'z', '0'..'9'];
-
   New(code);
   Code^.next := nil;
 
