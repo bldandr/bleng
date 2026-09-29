@@ -5,7 +5,7 @@
 ## Возможности 
 
 1. Циклы(for и while)
-2. Локальные и глоабльные переменные базовых типов(целочисленный, вещественный, строковый, символьный, флаговый, массивы)
+2. Локальные и глобальные переменные базовых типов(целочисленный, вещественный, строковый, символьный, флаговый, массивы)
 3. Оператор ветвления (if/else)
 4. Подпрограммы(процедуры)
 
@@ -17,8 +17,8 @@ fpc main.pas
 ```
 
 ## Пример программы на Bleng(сортировка массива QuickSort):
-```Shell
-[20]integer a;
+```c++
+[10]integer a;
 
 func quicksort(integer low, high) {
   integer i, j, pivot, temp;
@@ -50,14 +50,14 @@ func quicksort(integer low, high) {
 func main {
   integer i;
 
-  for i = 1 to 9 do {
+  for i = 1 to 10 do {
     write("Введите "); write(i); write("-тый элемент: ");
     read(a[i]);
   };
 
-  quicksort(1, 9);
+  quicksort(1, 10);
 
-  for i = 1 to 9 do {
+  for i = 1 to 10 do {
     write(a[i]); write(" ");
   }
 };
