@@ -585,12 +585,18 @@ begin
           end;
     cmNot:begin
             ch := GetLex;
-            tz := OrExpr;
+
+            if ch = cmSO then 
+            begin
+              ch := GetLex;
+              tz^.left := OrExpr;
+            end
+            else Error('Требуется (!');
+
+            if ch <> cmSC then Error('Требуется )!');
 
             tz^.Typ := cmOper;
-            tz^.op := ch;
-
-            if ch <> cmSC then Error('Требуется скобка!')
+            tz^.op := cmNot;
           end;
   end;
 
@@ -1055,8 +1061,11 @@ begin
   {Смотрим на логические операции}
   if op in [cmAnd, cmOr, cmNot] then
   begin
-    if (L.Type_ <> cmBool) or (R.Type_ <> cmBool) then
-      Error('Логические операции возможны только для boolean!');
+    if (op <> cmNot) or (L.type_ <> cmBool) then
+    begin 
+      if (L.Type_ <> cmBool) or (R.Type_ <> cmBool) then
+        Error('Логические операции возможны только для boolean!');
+    end;
 
     Res.Type_ := cmBool;
 
