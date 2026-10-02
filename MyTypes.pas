@@ -18,7 +18,7 @@ const MaxLex = 49; Max_Items = 8190; {Константы максимально�
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'cmReturn', '');
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', '');
 
 {ТИПЫ}
 Type
@@ -57,6 +57,7 @@ Type
                  cmOper: (op: ident; left, right: pTree);
                  cmVar: (index: integer; num: pTree);
                  cmConst: (Value: tValue);
+                 cmFunc: (indexFunc: pFunc; vars: pointer);
              end;
 
      {Тип лексем, на которые разбивается программа}
@@ -71,6 +72,7 @@ Type
                  cmWhile: (opWhile: pTree; doWhile_: pNode);
                  cmRead: (indexRead: integer; indexArrayRead: pTree);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
+                 cmReturn: (return: pTree);
              end;
      
      {Тип списка функций}

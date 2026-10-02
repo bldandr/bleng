@@ -27,7 +27,9 @@ Function Term: pTree; forward;
 Function Factor: pTree; forward;
 Function Operator:pNode; forward;
 Procedure EvalTree(p: pTree; var Res: tValue); forward;
-Procedure Interpretator(p: pNode); forward;
+Function Interpretator(p: pNode):pValue; forward;
+procedure CommandFunc(var Last: pNode; index: pFunc); forward;
+Function InterFunc(p: pFunc; vars: pointer):pValue; forward;
 
 {Процедура вывода ошибки}
 Procedure Error(err: string);
@@ -520,11 +522,35 @@ end;
 
 Function Factor:pTree;
 var tz: pTree;
-    timeVar:pVars;
+    timeVar:pVars; 
+    vrpointFunc: pFunc; vrNode: pNode;
 begin
   Case ch of
     cmIdent: begin
+               vrpointFunc := code;
                new(tz);
+
+               {Проверяем на то, вдруг идентефикатор - функция}
+               while vrpointFunc <> nil do
+               begin
+                if vrpointFunc^.name = lex then
+                begin
+                  vrNode := NewElem(cmName);
+                  CommandFunc(vrNode, vrpointFunc);
+                  
+                  {переносим данные из временной прееменной Node в основную переменную}
+                  tz^.typ := cmFunc; tz^.indexFunc := vrpointFunc; tz^.vars := vrNode^.vars; 
+
+                  {Возвращаем последнее значение тут, чтоб не идти дальше}
+                  Factor := tz;
+
+                  exit;
+                end;
+
+                vrpointFunc := vrpointFunc^.next;
+               end;
+
+               {Если все таки не функция - рассматриваем его как переменную}
                tz^.index := GetIndex(Lex);
 
                if tz^.index < 0 then
@@ -885,6 +911,18 @@ begin
   else Error('Требуется ")"!');
 end;
 
+{Обработка команды return}
+procedure CommandReturn(var Last: pNode);
+begin
+  AddElem(Last, NewElem(cmReturn));
+
+  ch := GetLex;
+  Last^.return := OrExpr;
+
+  ch := GetLex;
+end;
+
+
 {Процедура обработки команды функции}
 Procedure ComandFunc(var p, Last: pFunc);
 var main: pFunc;
@@ -1043,6 +1081,7 @@ begin
       cmWhile: OperatorWhile(Last);
       cmRead: CommandRead(Last);
       cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO: CommandCreateVar(Last);
+      cmReturn: CommandReturn(Last);
       cmElse: Error('Ошибка в операторе!');
     end;
 
@@ -1189,6 +1228,7 @@ end;
 {Функция для обхода дерева и получения результата в следствии}
 Procedure EvalTree(p: pTree; var Res: tValue);
 var ResL, ResR: tValue;
+    pRes: pValue;
 begin
   if p <> nil then
   begin
@@ -1201,8 +1241,15 @@ begin
     else begin {Если наш узел - не операция, то обрабатываем его как}
            case p^.Typ of                {переменную/константу}
              cmConst: Res := p^.value; {Конст - просто отдаем значение}
-             cmVar: ReturnValueVar(p^.index, p^.num, res);
-             {Идентефикатор - возвращаем значение переменной}
+             cmVar: ReturnValueVar(p^.index, p^.num, res); {Идентефикатор - возвращаем значение переменной}
+             cmFunc:
+             begin
+               new(pRes);
+               pRes := InterFunc(p^.indexFunc, p^.vars);
+               Res := pRes^;
+
+               dispose(pRes);            
+             end;           
            end;
          end;
   end;
@@ -1326,6 +1373,16 @@ begin
   else if p^.else_ <> nil then Interpretator(p^.else_);
 end;
 
+function InterReturn(p:pNode):pValue;
+var pVal: pValue;
+begin
+  new(pVal);
+  EvalTree(p^.return, pval^);
+
+  InterReturn := pval;
+end;
+
+
 {Процедура интерпретации оператора ввода}
 procedure InterRead(p: pNode);
 var timeVar: pValue; indexArray: tValue; type_: ident;
@@ -1372,7 +1429,7 @@ begin
 end;
 
 {Обработка команды функций}
-Procedure InterFunc(p: pFunc; Last: pNode);
+Function InterFunc(p: pFunc; vars: pointer):pValue;
 var timeStack: pStack;
     i, numb: integer;
     vr: tValue;
@@ -1407,7 +1464,7 @@ begin
     begin
       if tz^.Type_ = cmVar then
       begin
-        EvalTree(pTreeArray(Last^.vars)^[i], vr);
+        EvalTree(pTreeArray(vars)^[i], vr);
         if vr.i < 0 then
           pVarArray(Stack^.var_)^[i].v := @pVarArray(var_)^[abs(vr.i)]
         else
@@ -1424,7 +1481,7 @@ begin
       begin
         timeStack := stack;
         stack := stack^.next;
-        EvalTree(pTreeArray(Last^.vars)^[i], pVarArray(timeStack^.var_)^[i]);
+        EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
         stack := timeStack
       end;
     end;
@@ -1433,7 +1490,7 @@ begin
     tz := tz^.next;
   end;
 
-  Interpretator(p^.tree);
+  InterFunc := Interpretator(p^.tree);
 
   {Очистка переменных и элемента в стеке}
   DisposeVar(stack^.var_, numb);
@@ -1443,7 +1500,7 @@ begin
 end;
 
 {Процедура выполнения команд}
-procedure Interpretator(p: pNode);
+Function Interpretator(p: pNode):pValue;
 begin
   while p <> nil do
   begin
@@ -1456,6 +1513,7 @@ begin
       cmFor: InterFor(p);
       cmWhile: InterWhile(p);
       cmRead: InterRead(p);
+      cmReturn: Interpretator := InterReturn(p);
     end;
     p := p^.next;
   end;
@@ -1471,7 +1529,8 @@ begin
 
   ch := GetLex;
   if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
-  if ch = cmFunc then ComandFunc(Code, func);
+  if ch = cmFunc then ComandFunc(Code, func)
+  else Error('Требуется хотя бы 1 функция!');
 
   InterFunc(Code, nil); {Вызываем выполнение команд}
 
