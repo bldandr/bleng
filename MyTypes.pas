@@ -79,7 +79,6 @@ Type
                tree: pNode;
                vars: pVars;
                performans: byte;
-               return: tValue;
                next: pFunc;
              end;
 

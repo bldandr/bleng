@@ -2,14 +2,14 @@
 
 program qq;
 
-Uses MyTypes;
+Uses MyTypes, SystemFunc;
 
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
     st: string; {Используется в GetLex как строка}
     Ch: ident; {Лексемы}
     Lex: string; {Лексема в виде строки}
-    LexNum: integer; {Лексема в виде числа}
+    LexNum: longint; {Лексема в виде числа}
     LexNumFloat: real; {Лексема в виде вещественного числа}
     VarName: pVars; {Переменная всех временных названий в var}
     Var_:pointer; {Сами переменные}
@@ -89,7 +89,7 @@ begin
     end;
   end;
 
-  Error('Нет такого идентефикатора' + id);
+  Error('Нет такого идентефикатора: ' + id);
 end;
 
 {Функция получения типа от имени}
@@ -131,7 +131,7 @@ begin
     end;
   end;
 
-  Error('Нет такого идентефикатора' + id);
+  Error('Нет такого идентефикатора: ' + id);
 end;
 
 
