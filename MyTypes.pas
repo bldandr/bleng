@@ -10,15 +10,15 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
      cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
      cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
      cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmIdent);
+     cmFunc, cmReturn, cmUses, cmIdent);
 
-const MaxLex = 49; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
+const MaxLex = 50; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
       ('name', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', '');
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '');
 
 {ТИПЫ}
 Type
@@ -30,6 +30,8 @@ Type
     pVars = ^tVars;
     pStack = ^tStack;
 
+    {Указатель на функцию модуля}
+     pFunction=  function(var_: pointer):pValue;
 
      {Тип, хранящий информацию о массивах}
      tArrayInfo = record 
@@ -78,10 +80,12 @@ Type
      {Тип списка функций}
      tFunc = record 
                name: str15;
-               tree: pNode;
                vars: pVars;
                performans: byte;
                next: pFunc;
+               case type_:ident of
+                 cmFunc: (tree: pNode);
+                 cmUses: (body: pFunction);
              end;
 
      {Тип названий переменных}
@@ -109,14 +113,37 @@ Type
      pTreeArray = ^tTreeArray;
      tTreeArray = array[1..16000] of pTree;
 
+     {Тип для типов переменных в модульной функции}
+     tIdentArray = array[1..20] of ident;
 var 
    Code: pFunc; {Указатель на начало списка функций для интерпретатора}
    Func: pFunc; {Указатель на последнюю функцию}
    ID: set of char; {Множество для возможных знаков идентефикатора}
 
 implementation
+
+{Функция для создания функции в списке функций}
+Function NewFunc(name: str15):pFunc;
+var tz: pFunc;
+begin
+  new(tz);
+  tz^.next := nil;
+  tz^.name := name;
+  tz^.tree := nil;
+  tz^.vars := nil;
+  tz^.body := nil;
+  tz^.type_ := cmFunc;
+
+  NewFunc := tz;
+end;
+
     
 begin
+  {Инициализация допустимых букв в идентефикаторах}
   ID := ['a'..'z', '0'..'9', 'A'..'Z', '_'];
+
+  {Инициализация первых функций}
+  Code := NewFunc('main');
+  func := Code;
     
 end.

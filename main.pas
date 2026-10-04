@@ -2,7 +2,7 @@
 
 program qq;
 
-Uses MyTypes, SystemFunc;
+Uses MyTypes, SystemFunc, BaseFunc;
 
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
@@ -154,19 +154,6 @@ begin
   tz^.Type_ := typ;
 
   NewElem := tz;
-end;
-
-{Создание нового звена функции}
-Function NewFunc(name: str15):pFunc;
-var tz: pFunc;
-begin
-  new(tz);
-  tz^.next := nil;
-  tz^.name := name;
-  tz^.tree := nil;
-  tz^.vars := nil;
-
-  NewFunc := tz;
 end;
 
 {Процедура получения лексемы}
@@ -696,6 +683,7 @@ begin
     begin
       if ch in [cmIdent, cmNumber] then
       begin
+        {Все это для var-параметров}
         if tz^.type_ = cmVar then
         begin
           iVar := GetIndex(lex);
@@ -727,6 +715,7 @@ begin
 
           ch := GetLex;
         end
+        {Это уже для обычных параметров}
         else pTreeArray(Last^.vars)^[i] := orExpr
       end
       {ТУТ ДОПИСАТЬ ЛОГИКУ ПРОВЕРКИ ТИПОВ}
@@ -930,9 +919,7 @@ var main: pFunc;
     type_, typeArray: ident;
     i: byte;
 begin
-  main := NewFunc('main');
-  p := main;
-  Last := main;
+  main := p;
 
   while ch = cmFunc do
   begin
@@ -1433,7 +1420,7 @@ Function InterFunc(p: pFunc; vars: pointer):pValue;
 var timeStack: pStack;
     i, numb: integer;
     vr: tValue;
-    tz: pVars;
+    tz: pVars; res: pValue;
 begin
   new(timeStack); timeStack^.next := stack; stack := timeStack;
 
@@ -1490,7 +1477,12 @@ begin
     tz := tz^.next;
   end;
 
-  InterFunc := Interpretator(p^.tree);
+  if p^.type_ = cmFunc then InterFunc := Interpretator(p^.tree)
+  else 
+  begin
+    Res := p^.body(stack^.var_);
+    InterFunc := res;
+  end;
 
   {Очистка переменных и элемента в стеке}
   DisposeVar(stack^.var_, numb);
@@ -1509,7 +1501,7 @@ begin
       cmWriteln: InterWriteLn(p);
       cmIf: InterIf(p);
       cmIdent: InterIdent(p);
-      cmFunc: InterFunc(p^.indexFunc, p);
+      cmFunc: InterFunc(p^.indexFunc, p^.vars);
       cmFor: InterFor(p);
       cmWhile: InterWhile(p);
       cmRead: InterRead(p);
@@ -1520,9 +1512,6 @@ begin
 end;
 
 begin
-  New(code);
-  Code^.next := nil;
-
   {Открытие файла}
   assign(f, 'BLENG/main.b');
   reset(f);
