@@ -2,7 +2,7 @@
 
 program qq;
 
-Uses MyTypes, SystemFunc, BaseFunc;
+Uses MyTypes, SystemFunc, BaseFunc, ModuleGraph;
 
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
@@ -681,7 +681,7 @@ begin
 
     for i := 1 to index^.performans do
     begin
-      if ch in [cmIdent, cmNumber] then
+      if ch in [cmIdent, cmNumber, cmConst] then
       begin
         {Все это для var-параметров}
         if tz^.type_ = cmVar then
@@ -1513,7 +1513,7 @@ end;
 
 begin
   {Открытие файла}
-  assign(f, 'BLENG/main.b');
+  assign(f, 'main.b');
   reset(f);
 
   ch := GetLex;

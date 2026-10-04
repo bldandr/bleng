@@ -47,6 +47,11 @@ begin
     tz^.type_ := vars[i];
     tz^.next := nil;
     tz^.max_size := 0;
+
+    if i < performans then
+    begin
+      new(tz^.next); tz := tz^.next;
+    end;
   end; 
 end;
 

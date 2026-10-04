@@ -14,7 +14,7 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
 
 const MaxLex = 50; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
-      ('name', '', ';', 'var', ',', ':', 'int', '{', '}',
+      ('', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
@@ -29,6 +29,7 @@ Type
     pFunc = ^tFunc;
     pVars = ^tVars;
     pStack = ^tStack;
+    pString = ^string;
 
     {Указатель на функцию модуля}
      pFunction=  function(var_: pointer):pValue;
