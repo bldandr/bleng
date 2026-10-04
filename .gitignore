@@ -4,4 +4,4 @@
 *.ppu
 main
 test
-
+.vscode/
