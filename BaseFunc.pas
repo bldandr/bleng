@@ -37,6 +37,20 @@ begin
   SqrtMod := res;
 end;
 
+{Функция обработки trunc}
+Function TruncMod(var_: pointer):pValue;
+var numb: real; res: pValue; 
+begin
+  numb := pVarArray(var_)^[1].f;
+
+  new(res);
+  res^.type_ := cmInt;
+
+  res^.i := trunc(numb);
+
+  TruncMod := res;
+end;
+
 begin
   Randomize;
 
@@ -45,4 +59,7 @@ begin
 
   varsmod[1] := cmInt;
   InitFunc(Func, 'sqrt', 1, @SqrtMod, varsmod);
+
+  varsmod[1] := cmFloat;
+  InitFunc(Func, 'trunc', 1, @TruncMod, varsmod);
 end.
