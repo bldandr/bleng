@@ -10,13 +10,14 @@ var varsmod: tIdentArray;
 
 {Функция обработки random. Параметры: number: integer}
 function RandomMod(var_: pointer):pValue;
-var numb: tValue; pResult: pValue;
+var min, max: tValue; pResult: pValue;
 begin
-  numb := pVarArray(var_)^[1];
+  min := pVarArray(var_)^[1];
+  max := pVarArray(var_)^[2];
 
   new(pResult); 
   pResult^.type_ := cmInt;
-  pResult^.i := random(numb.i);
+  pResult^.i := min.i + random(max.i-min.i + 1);
 
   RandomMod := pResult;
 end;
@@ -39,8 +40,8 @@ end;
 begin
   Randomize;
 
-  varsmod[1] := cmInt;
-  InitFunc(Func, 'random', 1, @RandomMod, varsmod);
+  varsmod[1] := cmInt; varsmod[2] := cmInt;
+  InitFunc(Func, 'random', 2, @RandomMod, varsmod);
 
   varsmod[1] := cmInt;
   InitFunc(Func, 'sqrt', 1, @SqrtMod, varsmod);
