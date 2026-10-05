@@ -8,20 +8,21 @@
 2. Локальные и глобальные переменные базовых типов(целочисленный, вещественный, строковый, символьный, флаговый, массивы)
 3. Оператор ветвления (if/else)
 4. Подпрограммы(процедуры)
+5. Графика(RayLib)
 
 ## Сборка и запуск
 
 ```Shell
 fpc main.pas
-./main
+./main main.b
 ```
 
 ## Пример программы на Bleng(сортировка массива QuickSort):
 ```c++
-[10]integer a;
+[10]int a;
 
 func quicksort(integer low, high) {
-  integer i, j, pivot, temp;
+  int i, j, pivot, temp;
    
   if low < high then {
     pivot = a[(low + high) // 2];
@@ -48,7 +49,7 @@ func quicksort(integer low, high) {
 
 
 func main {
-  integer i;
+  int i;
 
   for i = 1 to 10 do {
     write("Введите "); write(i); write("-тый элемент: ");
