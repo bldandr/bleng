@@ -1512,8 +1512,10 @@ begin
 end;
 
 begin
+  if ParamCount = 0 then assign(f, 'main.b')
+  else assign(f, ParamStr(1));
+
   {Открытие файла}
-  assign(f, 'main.b');
   reset(f);
 
   ch := GetLex;
