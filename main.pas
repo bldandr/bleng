@@ -1360,6 +1360,7 @@ begin
   else if p^.else_ <> nil then Interpretator(p^.else_);
 end;
 
+{Функция интерпретации команды return}
 function InterReturn(p:pNode):pValue;
 var pVal: pValue;
 begin
@@ -1405,11 +1406,11 @@ begin
       begin
         FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
       end;
-      cmString:
+      {cmString:
       begin
         SizeString := byte(pVarArray(p)^[i].s^)+sizeof(char);
         Freemem(pVarArray(p)^[i].s, SizeString);
-      end;
+      end;}
     end;
   end; 
   FreeMem(p, size*sizeof(tValue));
