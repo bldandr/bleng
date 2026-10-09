@@ -6,7 +6,7 @@ Uses MyTypes, SystemFunc, BaseFunc, ModuleGraph;
 
 {ПЕРЕМЕННЫЕ}
 var f: text; {Открытие файла .b}
-    st: string; {Используется в GetLex как строка}
+    st, LastSt: string; {Используется в GetLex как строка}
     Ch: ident; {Лексемы}
     Lex: string; {Лексема в виде строки}
     LexNum: longint; {Лексема в виде числа}
@@ -33,6 +33,7 @@ Function InterFunc(p: pFunc; vars: pointer):pValue; forward;
 
 {Процедура вывода ошибки}
 Procedure Error(err: string);
+var i: integer;
 begin
   if not(eof(f)) then 
   begin
@@ -40,6 +41,9 @@ begin
     writeln('Ошибка интерпретации: ');
     writeln(err);
     writeln('Строка: ', LineFile);
+    writeln(LastSt);
+    for i := 1 to Symbol-1 do write(' ');
+    writeln('^');
     writeln('-----------------------');
   end
   else 
@@ -167,6 +171,8 @@ begin
   while (st='') and not(eof(f)) do {Пока строки пустые}
   begin
     readln(f, st);
+    LastSt := st;
+    Symbol := 0;
     inc(LineFile);
   end;
   i := 1;
@@ -174,6 +180,7 @@ begin
     inc(i);
 
   delete(st, 1, i-1);
+  Symbol := Symbol + i-1;
   i := 1;
 
   if (st = '') and not(eof(f)) then 
@@ -240,7 +247,7 @@ begin
       else Error('Недопустимый символ "' + lex + '"');
     end;
   end;
-  Symbol := Symbol + i;
+  Symbol := Symbol + i-1;
 
   ii := cmName;
   while (mainLex[ii] <> Lex) and (byte(ii) < MaxLex) do {Перебираем лексемы}
