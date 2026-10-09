@@ -51,6 +51,24 @@ begin
   TruncMod := res;
 end;
 
+{Функция обработки str}
+Function StrMod(var_: pointer):pValue;
+var numb: longint;
+    s: string;
+    code: integer;
+    res: pValue; 
+begin
+  numb := pVarArray(var_)^[1].i;
+
+  str(numb, s);
+
+  new(res); res^.type_ := cmString;
+  GetMem(res^.s, length(s) + 1);
+  string(res^.s^) := s; 
+
+  StrMod := res;
+end;
+
 begin
   Randomize;
 
@@ -62,4 +80,7 @@ begin
 
   varsmod[1] := cmFloat;
   InitFunc(Func, 'trunc', 1, @TruncMod, varsmod);
+
+  varsmod[1] := cmInt;
+  InitFunc(Func, 'str', 1, @StrMod, varsmod);
 end.
