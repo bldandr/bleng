@@ -10,15 +10,15 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
      cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
      cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
      cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmUses, cmIdent);
+     cmFunc, cmReturn, cmUses, cmMatrix, cmIdent);
 
-const MaxLex = 50; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
+const MaxLex = 51; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
       ('', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '');
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', '');
 
 {ТИПЫ}
 Type
@@ -40,6 +40,12 @@ Type
                     size: word;
                     Type_: Ident;
                 end;
+     {Тип, хранящий информацию о матрицах}
+     tMatrixInfo = record
+                    data: pointer;
+                    sizei, sizej: word;
+                    Type_: Ident; 
+                end;
 
 
      {Универсальный тип значения переменных}
@@ -51,6 +57,7 @@ Type
                   cmChar: (c: char);
                   cmFloat: (f: real);
                   cmArray: (a: ^tArrayInfo);
+                  cmMatrix: (m: ^tMatrixInfo);
                   cmVar: (v: pValue);
               end;
      
@@ -58,7 +65,7 @@ Type
      tTree = record
                case Typ:ident of
                  cmOper: (op: ident; left, right: pTree);
-                 cmVar: (index: integer; num: pTree);
+                 cmVar: (index: integer; num, numj: pTree);
                  cmConst: (Value: tValue);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
              end;
@@ -70,7 +77,7 @@ Type
                case Type_:ident of
                  cmIF:(op: pTree; Then_, Else_: pNode);
                  cmWrite:(tree: pTree);
-                 cmIdent:(treeVar, treeIndex: pTree; index: integer);
+                 cmIdent:(treeVar, treeIndex, treeIndexj: pTree; index: integer);
                  cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: integer;);
                  cmWhile: (opWhile: pTree; doWhile_: pNode);
                  cmRead: (indexRead: integer; indexArrayRead: pTree);
@@ -94,6 +101,7 @@ Type
                name: str15;
                type_: ident;
                max_size: word;
+               matrix_size: word;
                typeArray: ident;
                next: pVars;
              end;
@@ -107,6 +115,9 @@ Type
     {Типы для приведения нетипизированных указателей и указатели на них}
      pVarArray = ^tVarArray;
      tVarArray = array[1..Max_Items] of tValue;
+
+     pVarMatrix = ^tVarMatrix;
+     tVarMatrix = array[1..Max_Items, 1..Max_Items] of tValue;
 
      tCharArray = array[0..65000] of char;
      pCharArray = ^tCharArray;

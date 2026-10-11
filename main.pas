@@ -286,13 +286,28 @@ begin
         if ch in [cmKSC] then ch := GetLex
         else Error('Требуется ]!');
 
+        tz^.type_ := cmArray;
+
+        if ch in [cmKSO] then 
+        begin
+          ch := GetLex;
+          if ch = cmNumber then tz^.matrix_size := LexNum
+          else Error('Требуется число!');
+          ch := GetLex;
+
+          if ch in [cmKSC] then ch := GetLex
+          else Error('Требуется ]!');
+
+          tz^.type_ := cmMatrix;
+        end;
+
         if ch in [cmInt,cmString,cmBool,cmFloat,cmChar] then typeArray := ch
         else Error('Требуется тип!');
         
         ch := GetLex;
         if ch = cmIdent then 
         begin
-          tz^.name := lex; tz^.type_ := cmArray; tz^.typeArray := typeArray;
+          tz^.name := lex; tz^.typeArray := typeArray;
         end
         else Error('Требуется идентефикатор!');
 
@@ -342,6 +357,19 @@ begin
           pVarArray(var_)^[i].a^.Type_ := typeArray;
           GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
           FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
+        end;
+        cmMatrix:
+        begin
+          pVarArray(var_)^[i].Type_ := cmMatrix;
+
+          new(pVarArray(var_)^[i].m);
+
+          pVarArray(var_)^[i].m^.Sizei := tz^.max_size;
+          pVarArray(var_)^[i].m^.Sizej := tz^.matrix_size;
+
+          pVarArray(var_)^[i].m^.Type_ := typeArray;
+          GetMem(pVarArray(var_)^[i].m^.data, tz^.max_size*tz^.matrix_size*sizeof(tValue));
+          FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*tz^.matrix_size*sizeof(tValue), 0);
         end;
       end;
       tz := tz^.next;
@@ -562,15 +590,31 @@ begin
 
                tz^.Typ := cmVar;
 
-               if timeVar^.Type_ = cmArray then
-               begin
-                 ch := GetLex;
-                 if ch = cmKSO then
-                 begin
-                   ch := GetLex;
-                   tz^.num := OrExpr;
-                   if ch <> cmKSC then Error('Требуется "]"!');
-                 end
+               case timeVar^.Type_ of
+                  cmArray: begin
+                              ch := GetLex;
+                              if ch = cmKSO then
+                              begin
+                                ch := GetLex;
+                                tz^.num := OrExpr;
+                                if ch <> cmKSC then Error('Требуется "]"!');
+                              end;
+                            end;
+                  cmMatrix: begin
+                              ch := GetLex;
+                              if ch = cmKSO then 
+                              begin
+                                ch := GetLex;
+                                tz^.num := OrExpr;
+                                if ch <> cmKSC then Error('Требуется "]"!');
+
+                                ch := GetLex;
+                                if ch <> cmKSO then Error('Для матрицы требуется "["!');
+                                ch := GetLex;
+                                tz^.numj := OrExpr;
+                                if ch <> cmKSC then Error('Требуется "]"!');
+                              end;
+                            end;
                end;
              end;
     cmConst: begin
@@ -655,6 +699,25 @@ begin
     else Error('Требуется "["!');
 
     Last^.TreeIndex := OrExpr;
+
+    if ch = cmKSC then ch := GetLex
+    else Error('Требуется "]"!');
+  end;
+
+  if val^.type_ = cmMatrix then
+  begin
+    if ch = cmKSO then ch := GetLex
+    else Error('Требуется "["!');
+
+    Last^.TreeIndex := OrExpr;
+
+    if ch = cmKSC then ch := GetLex
+    else Error('Требуется "]"!');
+
+    if ch = cmKSO then ch := GetLex
+    else Error('Требуется "[" в матрице!');
+
+    Last^.treeIndexj := OrExpr;
 
     if ch = cmKSC then ch := GetLex
     else Error('Требуется "]"!');
@@ -1185,8 +1248,8 @@ begin
 end;
 
 {Получение значение переменной}
-Procedure ReturnValueVar(index: integer; pNum: pTree; var res: tValue);
-var num: tValue;
+Procedure ReturnValueVar(index: integer; pNum, pNumj: pTree; var res: tValue);
+var num, numj: tValue;
     RealVar: tValue;
 begin
   if index < 0 then RealVar := pVarArray(var_)^[abs(index)]
@@ -1199,6 +1262,16 @@ begin
       Error('Выход за пределы массива!');
     res := pVarArray(RealVar.a^.data)^[num.i];
     res.Type_ := RealVar.a^.Type_;
+  end
+  else if RealVar.Type_ = cmMatrix then
+  begin
+    EvalTree(pNum, num); EvalTree(pNumj, numj);
+
+    if num.i > RealVar.m^.sizei then Error('Выход за пределы матрицы!');
+    if numj.i > RealVar.m^.sizej then Error('Выход за пределы матрицы!');
+
+    Res := pVarArray(RealVar.m^.data)^[num.i*RealVar.m^.sizei + numj.i];
+    Res.Type_ := RealVar.m^.type_;
   end
   else if RealVar.Type_ = cmVar then Res := RealVar.v^
   else res := RealVar;
@@ -1235,7 +1308,7 @@ begin
     else begin {Если наш узел - не операция, то обрабатываем его как}
            case p^.Typ of                {переменную/константу}
              cmConst: Res := p^.value; {Конст - просто отдаем значение}
-             cmVar: ReturnValueVar(p^.index, p^.num, res); {Идентефикатор - возвращаем значение переменной}
+             cmVar: ReturnValueVar(p^.index, p^.num, p^.numj, res); {Идентефикатор - возвращаем значение переменной}
              cmFunc:
              begin
                new(pRes);
@@ -1264,7 +1337,7 @@ end;
 
 {Интерпретация использования идентефикаторов}
 procedure InterIdent(p: pNode);
-var val, index: tValue;
+var val, index, indexj: tValue;
     timeVar: pValue;
 begin
   EvalTree(p^.treeVar, val);
@@ -1285,6 +1358,18 @@ begin
     else
       pVarArray(timeVar^.a^.data)^[index.i] := val;
   end
+  else if timeVar^.Type_ = cmMatrix then
+  begin
+    EvalTree(p^.treeIndex, Index);
+    EvalTree(p^.treeIndexj, Indexj);
+    if index.i > timeVar^.a^.size then
+      Error('Выход за пределы массива!');
+
+    if timeVar^.m^.Type_ <> val.Type_ then
+      Error('Несоответствие типов.')
+    else
+      pVarArray(timeVar^.m^.data)^[index.i*timeVar^.m^.sizei + indexj.i] := val;
+  end 
   else if ((timeVar^.Type_ = val.Type_) or SoulTypes(timeVar^.Type_, val.Type_)) then
          timeVar^ := val
   else Error('Несоответствие типов.')
