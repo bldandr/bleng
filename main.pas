@@ -1210,6 +1210,13 @@ begin
           else Error('Для строк допустима только операция равенства.');
         end;
       end;
+      cmChar:
+      begin
+        case op of
+          cmOpSr: Res.b := L.c = R.c;
+          cmOpNR: Res.b := L.c <> R.c;
+        end;
+      end;
     end;
     exit;
   end;
@@ -1605,7 +1612,7 @@ begin
 end;
 
 begin
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'bfs.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
