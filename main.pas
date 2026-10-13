@@ -262,15 +262,15 @@ var i: integer;
     tz: pVars;
     numNames: integer;
 begin
+  new(VarName); tz := VarName; tz^.next := nil;
+  numNames := 1;
+
   While ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] do
   begin
-    new(VarName); tz := VarName; tz^.next := nil;
-
     type_ := ch;
 
-    numNames := 1;
-
     ch := GetLex;
+
     repeat
       if ch = cmIdent then {Если имя - запомнить}
       begin
@@ -324,57 +324,62 @@ begin
           type_ := ch;
       end;
     until ch = cmTZ;
-
-    tz := VarName;
-
-    VarSize := VarSize + numNames;
-    GetMem(var_, (numNames)*sizeof(tValue));
-
-    {Иначе переносим из временного хранилища имен все переменные}
-    for i := 1 to numNames do
-    begin
-      pVarArray(var_)^[i].Type_ := tz^.type_;
-      case tz^.Type_ of
-        {Для каждого типа рассматриваем свое значение}
-        cmInt: pVarArray(var_)^[i].i := 0;
-        cmString:
-        begin
-          Getmem(pVarArray(var_)^[i].s, sizeof(byte));
-          FillChar(pVarArray(var_)^[i].s^, sizeof(byte), 0);
-        end;
-        cmBool: pVarArray(var_)^[i].b := False;
-        cmChar: pVarArray(var_)^[i].c := #0;
-        cmFloat: pVarArray(var_)^[i].f := 0;
-        {Для массива это все}
-        cmArray:
-        begin
-          pVarArray(var_)^[i].Type_ := cmArray;
-
-          new(pVarArray(var_)^[i].a);
-
-          pVarArray(var_)^[i].a^.Size := tz^.max_size;
-
-          pVarArray(var_)^[i].a^.Type_ := typeArray;
-          GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
-          FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
-        end;
-        cmMatrix:
-        begin
-          pVarArray(var_)^[i].Type_ := cmMatrix;
-
-          new(pVarArray(var_)^[i].m);
-
-          pVarArray(var_)^[i].m^.Sizei := tz^.max_size;
-          pVarArray(var_)^[i].m^.Sizej := tz^.matrix_size;
-
-          pVarArray(var_)^[i].m^.Type_ := typeArray;
-          GetMem(pVarArray(var_)^[i].m^.data, tz^.max_size*tz^.matrix_size*sizeof(tValue));
-          FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*tz^.matrix_size*sizeof(tValue), 0);
-        end;
-      end;
-      tz := tz^.next;
-    end;
     ch := GetLex;
+
+    if ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] then
+    begin
+      new(tz^.next); tz := tz^.next; tz^.next := nil; inc(numNames);
+    end; 
+  end;
+
+  tz := VarName;
+
+  VarSize := VarSize + numNames;
+  GetMem(var_, (numNames)*sizeof(tValue));
+
+  {Иначе переносим из временного хранилища имен все переменные}
+  for i := 1 to numNames do
+  begin
+    pVarArray(var_)^[i].Type_ := tz^.type_;
+    case tz^.Type_ of
+      {Для каждого типа рассматриваем свое значение}
+      cmInt: pVarArray(var_)^[i].i := 0;
+      cmString:
+      begin
+        Getmem(pVarArray(var_)^[i].s, sizeof(byte));
+        FillChar(pVarArray(var_)^[i].s^, sizeof(byte), 0);
+      end;
+      cmBool: pVarArray(var_)^[i].b := False;
+      cmChar: pVarArray(var_)^[i].c := #0;
+      cmFloat: pVarArray(var_)^[i].f := 0;
+      {Для массива это все}
+      cmArray:
+      begin
+        pVarArray(var_)^[i].Type_ := cmArray;
+
+        new(pVarArray(var_)^[i].a);
+
+        pVarArray(var_)^[i].a^.Size := tz^.max_size;
+
+        pVarArray(var_)^[i].a^.Type_ := typeArray;
+        GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
+        FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
+      end;
+      cmMatrix:
+      begin
+        pVarArray(var_)^[i].Type_ := cmMatrix;
+
+        new(pVarArray(var_)^[i].m);
+
+        pVarArray(var_)^[i].m^.Sizei := tz^.max_size;
+        pVarArray(var_)^[i].m^.Sizej := tz^.matrix_size;
+
+        pVarArray(var_)^[i].m^.Type_ := typeArray;
+        GetMem(pVarArray(var_)^[i].m^.data, tz^.max_size*tz^.matrix_size*sizeof(tValue));
+        FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*tz^.matrix_size*sizeof(tValue), 0);
+      end;
+    end;
+    tz := tz^.next;
   end;
 end;
 
