@@ -756,7 +756,7 @@ begin
 
     for i := 1 to index^.performans do
     begin
-      if ch in [cmIdent, cmNumber, cmConst] then
+      if ch in [cmIdent, cmNumber, cmConst, cmSO] then
       begin
         {Все это для var-параметров}
         if tz^.type_ = cmVar then
