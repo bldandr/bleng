@@ -802,6 +802,8 @@ begin
   begin
     ch := GetLex;
     Last^.treeVar := OrExpr;
+    if (val^.type_ <> Last^.treeVar^.typeElem) and (val^.typeArray <> Last^.treeVar^.typeElem) 
+    then Error('Несоответствие типов.');
     Last^.index := index;
   end
   else Error('Требуется "="!');
@@ -1052,6 +1054,7 @@ begin
 
   ch := GetLex;
   Last^.return := OrExpr;
+  if Last^.return^.typeElem <> Func^.typeReturn then Error('Несоответствие типов!');
 
   ch := GetLex;
 end;
