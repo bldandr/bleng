@@ -63,6 +63,7 @@ Type
      
      {Тип дерева операций}
      tTree = record
+               typeElem: ident;
                case Typ:ident of
                  cmOper: (op: ident; left, right: pTree);
                  cmVar: (index: integer; num, numj: pTree);
@@ -91,6 +92,7 @@ Type
                vars: pVars;
                performans: byte;
                next: pFunc;
+               typeReturn: ident;
                case type_:ident of
                  cmFunc: (tree: pNode);
                  cmUses: (body: pFunction);

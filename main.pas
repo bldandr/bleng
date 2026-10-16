@@ -30,6 +30,7 @@ Procedure EvalTree(p: pTree; var Res: tValue); forward;
 Function Interpretator(p: pNode):pValue; forward;
 procedure CommandFunc(var Last: pNode; index: pFunc); forward;
 Function InterFunc(p: pFunc; vars: pointer):pValue; forward;
+procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
 
 {Процедура вывода ошибки}
 Procedure Error(err: string);
@@ -429,6 +430,16 @@ begin
     ch := GetLex;
     tz^.right := AndExpr;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   OrExpr := left;
@@ -451,6 +462,16 @@ begin
     ch := GetLex;
     tz^.right := NotExpr;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   AndExpr := left;
@@ -473,6 +494,16 @@ begin
     tz^.right := nil;
     ch := GetLex;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   NotExpr := left;
@@ -496,6 +527,16 @@ begin
     ch := GetLex;
     tz^.right := Expression;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   CompareExpr := left;
@@ -518,6 +559,16 @@ begin
     ch := GetLex;
     tz^.right := Term;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   Expression := left;
@@ -541,6 +592,16 @@ begin
     ch := GetLex;
     tz^.right := Factor;
     left := tz;
+
+    {Проверка на соответствие типов и сложение двух констант заранее}
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    else left^.typeElem := left^.left^.typeElem;
+
+    if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
+    begin
+      AddVal(left^.left^.value, left^.right^.value, left^.value, left^.op);
+      left^.typ := cmConst;
+    end;
   end;
 
   Term := left;
@@ -567,6 +628,7 @@ begin
                   
                   {переносим данные из временной прееменной Node в основную переменную}
                   tz^.typ := cmFunc; tz^.indexFunc := vrpointFunc; tz^.vars := vrNode^.vars; 
+                  tz^.typeElem := vrpointFunc^.typeReturn;
 
                   {Возвращаем последнее значение тут, чтоб не идти дальше}
                   Factor := tz;
@@ -594,6 +656,7 @@ begin
                end;
 
                tz^.Typ := cmVar;
+               tz^.typeElem := timeVar^.type_;
 
                case timeVar^.Type_ of
                   cmArray: begin
@@ -604,6 +667,7 @@ begin
                                 tz^.num := OrExpr;
                                 if ch <> cmKSC then Error('Требуется "]"!');
                               end;
+                              tz^.typeElem := timeVar^.typeArray;
                             end;
                   cmMatrix: begin
                               ch := GetLex;
@@ -619,6 +683,7 @@ begin
                                 tz^.numj := OrExpr;
                                 if ch <> cmKSC then Error('Требуется "]"!');
                               end;
+                              tz^.typeElem := timeVar^.typeArray;
                             end;
                end;
              end;
@@ -632,18 +697,21 @@ begin
                  tz^.value.Type_ := cmChar;
                  tz^.value.c := lex[1];
                end;
+               tz^.typeElem := cmString;
              end;
     cmNumber:begin
                new(tz);
                tz^.Typ := cmConst;
                tz^.value.Type_ := cmInt;
                tz^.value.i := LexNum;
+               tz^.typeElem := cmInt;
              end;
     cmNumberFloat:begin
                new(tz);
                tz^.Typ := cmConst;
                tz^.value.Type_ := cmFloat;
                tz^.value.f := LexNumFloat;
+               tz^.typeElem := cmFloat;
              end;
     cmSO: begin
             ch := GetLex;
@@ -1617,7 +1685,7 @@ begin
 end;
 
 begin
-  if ParamCount = 0 then assign(f, 'bfs.b')
+  if ParamCount = 0 then assign(f, 'main.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
