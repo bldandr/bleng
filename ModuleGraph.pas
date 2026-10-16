@@ -200,6 +200,58 @@ begin
   DrawEllipseMod := nil;
 end;
 
+{Функция IsMouseButtonDown}
+Function IsMouseButtonDownMod(var_: pointer):pValue;
+var button: integer; res: pValue;
+begin
+  button := pVarArray(var_)^[1].i;
+
+  new(res);
+
+  res^.type_ := cmBool;
+  res^.b := IsMouseButtonDown(button);
+
+  IsMouseButtonDownMod := res;
+end;
+
+{Функция GetMouseX}
+Function GetMouseXMod(var_: pointer):pValue;
+var res: pValue;
+begin
+  new(res);
+
+  res^.type_ := cmInt;
+  res^.i := GetMouseX;
+
+  GetMouseXMod := res;
+end;
+
+{Функция GetMouseY}
+Function GetMouseYMod(var_: pointer):pValue;
+var res: pValue;
+begin
+  new(res);
+
+  res^.type_ := cmInt;
+  res^.i := GetMouseY;
+
+  GetMouseYMod := res;
+end;
+
+{Функция IsMouseButtonPressed}
+Function IsMouseButtonPressedMod(var_:pointer):pValue;
+var res: pValue; button: integer;
+begin
+  button := pVarArray(var_)^[1].i;
+
+  new(res);
+  res^.type_ := cmBool;
+
+  res^.b := IsMouseButtonPressed(button);
+
+  IsMouseButtonPressedMod := res;
+end;
+
 
 begin
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmString;
@@ -235,4 +287,14 @@ begin
 
   varsmod[1] := cmString; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
   InitFunc(Func, 'DrawEllipse', 5, @DrawEllipseMod, varsmod);
+
+  varsmod[1] := cmInt;
+  InitFunc(Func, 'MouseButtonDown', 1, @IsMouseButtonDownMod, varsmod);
+
+  InitFunc(Func, 'GetMouseX', 0, @GetMouseXMod, varsmod);
+
+  InitFunc(Func, 'GetMouseY', 0, @GetMouseYMod, varsmod);
+
+  varsmod[1] := cmInt;
+  InitFunc(Func, 'MouseBTNPressed', 1, @IsMouseButtonPressedMod, varsmod);
 end.
