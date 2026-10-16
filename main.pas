@@ -854,19 +854,20 @@ begin
               timeVar := timeVar^.next;
           end;
 
-          if TimeVar^.type_ = cmArray then
-          begin
-            ch := GetLex;
-
-          end;
+          if timeVar^.type_ <> tz^.typeArray then Error('Несоответствие типов!');
 
           ch := GetLex;
         end
         {Это уже для обычных параметров}
-        else pTreeArray(Last^.vars)^[i] := orExpr
+        else 
+        begin
+          pTreeArray(Last^.vars)^[i] := orExpr;
+          if pTreeArray(Last^.vars)^[i]^.typeElem <> tz^.type_ then Error('Несоответствие типов!');
+        end;
       end
-      {ТУТ ДОПИСАТЬ ЛОГИКУ ПРОВЕРКИ ТИПОВ}
       else Error('Требуется переменная!');
+
+
 
       if ch in [cmZP, cmSC] then ch := GetLex
       else Error('Требуется ,!');

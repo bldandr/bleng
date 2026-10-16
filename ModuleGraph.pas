@@ -276,7 +276,7 @@ begin
   varsmod[1] := cmString; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
   InitFunc(Func, 'DrawText', 5, @DrawTextMod, varsmod, cmName);
 
-  varsmod[1] := cmString;
+  varsmod[1] := cmInt;
   InitFunc(Func, 'ClearBackground', 1, @ClearBackgroundMod, varsmod, cmName);
 
   varsmod[1] := cmInt;
