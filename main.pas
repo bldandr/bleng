@@ -658,6 +658,8 @@ begin
                tz^.Typ := cmVar;
                tz^.typeElem := timeVar^.type_;
 
+               if timeVar^.type_ = cmVar then tz^.typeElem := timeVar^.typeArray;
+
                case timeVar^.Type_ of
                   cmArray: begin
                               ch := GetLex;
@@ -1078,6 +1080,14 @@ begin
     i := 0;
 
     ch := GetLex;
+
+    if ch in [cmint,cmString,cmBool,cmChar,cmFloat] then 
+    begin
+      Last^.typeReturn := ch;
+      ch := GetLex; 
+    end
+    else Last^.typeReturn := cmName;
+
     if ch = cmSO then
     begin
       new(Last^.vars); tz := Last^.vars; tz^.next := nil;
@@ -1086,7 +1096,11 @@ begin
       begin
         type_ := ch;
 
-        if ch = cmVar then ch := GetLex;
+        if ch = cmVar then 
+        begin
+          ch := GetLex;
+          typeArray := ch;
+        end;
 
         if ch = cmKSO then
         begin
@@ -1103,7 +1117,7 @@ begin
         ch := getLex;
         while ch in [cmIdent] do
         begin
-          tz^.Type_ := type_; inc(i);
+          tz^.Type_ := type_; inc(i); tz^.typeArray := typeArray;
           if type_ = cmArray then
           begin
             tz^.max_size := lexNum;
@@ -1127,6 +1141,12 @@ begin
 
       if ch = cmSC then ch := GetLex
       else Error('Требуется )!');
+    end;
+
+    if ch in [cmint,cmString,cmBool,cmChar,cmFloat] then 
+    begin
+      Last^.typeReturn := ch;
+      ch := GetLex; 
     end;
 
     Last^.performans := i;

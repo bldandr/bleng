@@ -5,7 +5,7 @@ interface
 uses MyTypes;
 
 Function NewFunc(name: str15):pFunc;
-Procedure InitFunc(var Func: pFunc; name: string; performans: word; pfunct: pFunction; vars: tIdentArray);
+Procedure InitFunc(var Func: pFunc; name: string; performans: word; pfunct: pFunction; vars: tIdentArray; typeReturn: ident);
 
 implementation
 
@@ -25,13 +25,14 @@ begin
 end;
 
 {Функция инициплизации модульных функций}
-Procedure InitFunc(var Func: pFunc; name: string; performans: word; pfunct: pFunction; vars: tIdentArray);
+Procedure InitFunc(var Func: pFunc; name: string; performans: word; pfunct: pFunction; vars: tIdentArray; typeReturn: ident);
 var i: integer;
     tz: pVars;
 begin
   Func^.next := NewFunc(name); 
   Func := Func^.next; 
   Func^.performans := performans; 
+  Func^.typeReturn := typeReturn;
 
   func^.type_ := cmUses; 
   func^.body := pfunct;

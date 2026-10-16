@@ -73,14 +73,14 @@ begin
   Randomize;
 
   varsmod[1] := cmInt; varsmod[2] := cmInt;
-  InitFunc(Func, 'random', 2, @RandomMod, varsmod);
+  InitFunc(Func, 'random', 2, @RandomMod, varsmod, cmInt);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'sqrt', 1, @SqrtMod, varsmod);
+  InitFunc(Func, 'sqrt', 1, @SqrtMod, varsmod, cmFloat);
 
   varsmod[1] := cmFloat;
-  InitFunc(Func, 'trunc', 1, @TruncMod, varsmod);
+  InitFunc(Func, 'trunc', 1, @TruncMod, varsmod, cmInt);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'str', 1, @StrMod, varsmod);
+  InitFunc(Func, 'str', 1, @StrMod, varsmod, cmString);
 end.

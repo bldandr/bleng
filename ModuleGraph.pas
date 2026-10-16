@@ -255,46 +255,46 @@ end;
 
 begin
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmString;
-  InitFunc(Func, 'InitGraph', 3, @InitGraph, varsmod);
+  InitFunc(Func, 'InitGraph', 3, @InitGraph, varsmod, cmName);
 
-  InitFunc(Func, 'WindowNotClose', 0, @WindowNotClose, varsmod);
-  InitFunc(Func, 'BeginDrawing', 0, @BegDraw, varsmod);
-  InitFunc(Func, 'EndDrawing', 0, @EndDraw, varsmod);
+  InitFunc(Func, 'WindowNotClose', 0, @WindowNotClose, varsmod, cmName);
+  InitFunc(Func, 'BeginDrawing', 0, @BegDraw, varsmod, cmName);
+  InitFunc(Func, 'EndDrawing', 0, @EndDraw, varsmod, cmName);
 
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
-  InitFunc(Func, 'DrawRectangle', 5, @DrawRectangleMod, varsmod);
+  InitFunc(Func, 'DrawRectangle', 5, @DrawRectangleMod, varsmod, cmName);
 
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmInt; 
-  InitFunc(Func, 'DrawPixel', 3, @DrawPixelMod, varsmod);
+  InitFunc(Func, 'DrawPixel', 3, @DrawPixelMod, varsmod, cmName);
 
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
-  InitFunc(Func, 'DrawLine', 5, @DrawLineMod, varsmod);
+  InitFunc(Func, 'DrawLine', 5, @DrawLineMod, varsmod, cmName);
 
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt;
-  InitFunc(Func, 'DrawCircle', 4, @DrawCircleMod, varsmod);
+  InitFunc(Func, 'DrawCircle', 4, @DrawCircleMod, varsmod, cmName);
 
   varsmod[1] := cmString; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
-  InitFunc(Func, 'DrawText', 5, @DrawTextMod, varsmod);
+  InitFunc(Func, 'DrawText', 5, @DrawTextMod, varsmod, cmName);
 
   varsmod[1] := cmString;
-  InitFunc(Func, 'ClearBackground', 1, @ClearBackgroundMod, varsmod);
+  InitFunc(Func, 'ClearBackground', 1, @ClearBackgroundMod, varsmod, cmName);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'IsKeyDown', 1, @IsKeyDownMod, varsmod);
+  InitFunc(Func, 'IsKeyDown', 1, @IsKeyDownMod, varsmod, cmBool);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'IsKeyPressed', 1, @IsKeyPressedMod, varsmod);
+  InitFunc(Func, 'IsKeyPressed', 1, @IsKeyPressedMod, varsmod, cmBool);
 
   varsmod[1] := cmString; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
-  InitFunc(Func, 'DrawEllipse', 5, @DrawEllipseMod, varsmod);
+  InitFunc(Func, 'DrawEllipse', 5, @DrawEllipseMod, varsmod, cmName);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'MouseButtonDown', 1, @IsMouseButtonDownMod, varsmod);
+  InitFunc(Func, 'MouseButtonDown', 1, @IsMouseButtonDownMod, varsmod, cmBool);
 
-  InitFunc(Func, 'GetMouseX', 0, @GetMouseXMod, varsmod);
+  InitFunc(Func, 'GetMouseX', 0, @GetMouseXMod, varsmod, cmInt);
 
-  InitFunc(Func, 'GetMouseY', 0, @GetMouseYMod, varsmod);
+  InitFunc(Func, 'GetMouseY', 0, @GetMouseYMod, varsmod, cmInt);
 
   varsmod[1] := cmInt;
-  InitFunc(Func, 'MouseBTNPressed', 1, @IsMouseButtonPressedMod, varsmod);
+  InitFunc(Func, 'MouseBTNPressed', 1, @IsMouseButtonPressedMod, varsmod, cmBool);
 end.
