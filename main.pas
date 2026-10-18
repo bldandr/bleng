@@ -36,6 +36,7 @@ procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
 Procedure Error(err: string);
 var i: integer;
 begin
+  {Если не конец файла, то ошибка интерпретации}
   if not(eof(f)) then 
   begin
     writeln('-----------------------');
@@ -49,6 +50,7 @@ begin
   end
   else 
   begin
+    {Если конец, то уже в рантайме}
     writeln('-----------------------');
     writeln('Ошибка в рантайме: ');
     writeln(err);
@@ -57,13 +59,13 @@ begin
   halt(1);
 end;
 
-{Функция получения индекса переменной}
+{Функция получения индекса переменной. Получает название, возвращает числовой индекс}
 Function GetIndex(id: string):integer;
 var i: integer;
     tz: pVars;
 begin
+  {Сначала перебираем локальные перменные последней функции}
   tz := Func^.vars;
-
   if tz <> nil then
   begin
     i := 1;
@@ -79,8 +81,9 @@ begin
     end;
   end;
 
-  tz := VarName;
 
+  {Перебираем глобальные переменные}
+  tz := VarName;
   if tz <> nil then
   begin
     i := 1;
@@ -99,13 +102,35 @@ begin
   Error('Нет такого идентефикатора: ' + id);
 end;
 
-{Функция получения типа от имени}
+{Функция, которая возвращает указатель на элемент динамического списка имен переменных(глобальных и локальных) по индексу}
+Function GetPointerForNameVar(index: integer):pVars;
+var tz: pVars;
+begin
+  {Если индекс отрицательный - переменна глоабльная}
+  if index < 0 then
+  begin
+    tz := VarName;
+    while (tz^.name <> lex) and (tz <> nil) 
+    do tz := tz^.next;
+  end
+  else
+  {Иначе, переменная локальная}
+  begin
+    tz := func^.Vars;
+    while (tz^.name <> lex) and (tz <> nil)
+    do tz := tz^.next;
+  end;
+
+  GetPointerForNameVar := tz;
+end;
+
+{Функция получения типа от имени. Перебирает по именам все переменные и вовзращает тип нужной}
 Function GetType(id: string):ident;
 var i: integer;
     tz: pVars;
 begin
+  {Перебираем локальные переменные}
   tz := Func^.vars;
-
   if tz <> nil then
   begin
     i := 1;
@@ -121,8 +146,8 @@ begin
     end;
   end;
 
+  {Перебираем глобальные переменные}
   tz := VarName;
-
   if tz <> nil then
   begin
     i := 1;
@@ -142,14 +167,14 @@ begin
 end;
 
 
-{Процедура добавления новой лексемы к последней}
+{Функция добавления новой лексемы к последней в AST}
 Procedure AddElem(var Last: pNode; Elem: pNode);
 begin
   Last^.next := Elem;
   Last := Last^.next;
 end;
 
-{Процедура создания новой переменной}
+{Функция создания новой лексемы для AST}
 Function NewElem(Typ: ident):pNode;
 var tz: pNode;
 begin
@@ -161,7 +186,7 @@ begin
   NewElem := tz;
 end;
 
-{Процедура получения лексемы}
+{Функция, которая возвращает следущую лексему из файла}
 Function GetLex:ident;
 var i, code: integer;
     ii: ident;
@@ -256,30 +281,36 @@ begin
   GetLex := ii;
 end;
 
-{Процедура обработки раздела var}
+{Процедура обработки объявления глобальных переменных}
 Procedure SectionVar;
 var i: integer;
     type_, typeArray: ident;
     tz: pVars;
     numNames: integer;
 begin
+  {Создаем новый элемент в динамическом списке названий глобальных переменных}
   new(VarName); tz := VarName; tz^.next := nil;
   numNames := 1;
 
+  {ЦИкл обрабатывает несколько переменных одного типа. 1 итерация цикла = 1 новый тип}
   While ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] do
   begin
+    {Запоминаем наш нужный тип}
     type_ := ch;
-
     ch := GetLex;
 
+    {ЦИкл, который обрабатывает несколько переменных одного типа}
     repeat
-      if ch = cmIdent then {Если имя - запомнить}
+      {Если это просто имя - создаем новое звено в динамическом списке глоабльных переменных с нужным типом}
+      if ch = cmIdent then
       begin
         tz^.name := Lex;
         tz^.type_ := type_;
       end
+      {Если тип, который мы запомнили - это "[", то значит, что это массив. Обрабатываем переменную, как массив}
       else if type_ = cmKSO then
       begin
+        {Запоминаем число(количество элементов) в массиве и его тип}
         if ch = cmNumber then tz^.max_size := LexNum
         else Error('Требуется число!');
 
@@ -289,8 +320,10 @@ begin
 
         tz^.type_ := cmArray;
 
+        {Если мы снова видим "[", то это значит, что у нас матрица. Обрабатываем теперь ее как матрицу}
         if ch in [cmKSO] then 
         begin
+          {Запоминаем максимальное количество элементов во второй плоскости матрицы и сохраняем тип}
           ch := GetLex;
           if ch = cmNumber then tz^.matrix_size := LexNum
           else Error('Требуется число!');
@@ -302,9 +335,11 @@ begin
           tz^.type_ := cmMatrix;
         end;
 
+        {Если дальше не идет тип, то выдаем ошибку}
         if ch in [cmInt,cmString,cmBool,cmFloat,cmChar] then typeArray := ch
         else Error('Требуется тип!');
         
+        {Если дальше идет идентефикаторы, то создаем новые элементы в списке глобальных имен переменных и следовательно запоминаем их}
         ch := GetLex;
         if ch = cmIdent then 
         begin
@@ -313,47 +348,54 @@ begin
         else Error('Требуется идентефикатор!');
 
       end;
+      {Если не лексемы, которые должны идти дальше - выдаем ошибку}
       Ch := GetLex;
       if not(Ch in [cmTZ,cmZP,cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool,cmFunc])
       then Error('Требуется ";"!'){Если не ; ,}
       else if Ch <> cmTZ then
       begin
+        {А иначе, если тип все таки запятая, то создаем новый элемент в списке глобальных названий переменных}
         ch := GetLex;
         new(tz^.next); tz := tz^.next; tz^.next := nil;
         inc(numNames);
         if ch in [cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool] then
           type_ := ch;
       end;
-    until ch = cmTZ;
+    until ch = cmTZ; {Выходим, если лексема - ;}
+    
+    {Обработчик, если вдруг следущая лексема - это тип, то создаем элемент в списке названий глоабльных переменных и 
+    увеличиваем количество глобальных переменных}
     ch := GetLex;
-
     if ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] then
     begin
       new(tz^.next); tz := tz^.next; tz^.next := nil; inc(numNames);
     end; 
   end;
 
+  {Встаем на начальную позицию списка названий глобальных переменных}
   tz := VarName;
 
-  VarSize := VarSize + numNames;
+  {Считаем общее количество глобальных переменных и выделяем под них память}
+  VarSize := numNames;
   GetMem(var_, (numNames)*sizeof(tValue));
 
-  {Иначе переносим из временного хранилища имен все переменные}
+  {Переносим из списка имен глобальных переменных все переменные в фактический стек глобальных переменных}
   for i := 1 to numNames do
   begin
     pVarArray(var_)^[i].Type_ := tz^.type_;
     case tz^.Type_ of
-      {Для каждого типа рассматриваем свое значение}
+      {Для базовых типов - просто обнуляем значение}
       cmInt: pVarArray(var_)^[i].i := 0;
+      cmBool: pVarArray(var_)^[i].b := False;
+      cmChar: pVarArray(var_)^[i].c := #0;
+      cmFloat: pVarArray(var_)^[i].f := 0;
+      {Для строки - выделяем память для 1 байта(количества символом) и обнуляем его}
       cmString:
       begin
         Getmem(pVarArray(var_)^[i].s, sizeof(byte));
         FillChar(pVarArray(var_)^[i].s^, sizeof(byte), 0);
       end;
-      cmBool: pVarArray(var_)^[i].b := False;
-      cmChar: pVarArray(var_)^[i].c := #0;
-      cmFloat: pVarArray(var_)^[i].f := 0;
-      {Для массива это все}
+      {Для массива создаем новый элемент его описания, присваиваем этому элементу максимальный размер, выделяем память под этот размер и зануляем массив}
       cmArray:
       begin
         pVarArray(var_)^[i].Type_ := cmArray;
@@ -366,6 +408,7 @@ begin
         GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
         FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
       end;
+      {Для матрицы почти так же, как с массивом, но еще добавляется новый параметр размера}
       cmMatrix:
       begin
         pVarArray(var_)^[i].Type_ := cmMatrix;
@@ -384,35 +427,41 @@ begin
   end;
 end;
 
-{Функция сложения строк}
+{Функция сложения строк. На вход берет два указателя на строки и возвращает другой указатель с полной строкой}
 Function PlusString(left, right:pointer):pointer;
 var SizeLeft, SizeRight, SizeTotal: byte;
     p: pointer;
 begin
+  {Берем размерности строк, которые требуется сложить}
   SizeLeft := byte(left^);
   SizeRight := Byte(right^);
   SizeTotal:= SizeLeft + SizeRight;
 
+  {Выделяем память под новую строку и присваем ему конечный размер}
   GetMem(p, SizeTotal + sizeof(byte));
   byte(p^) := Sizetotal;
 
+  {Копируем оба указателя в новую строку}
   Move(pCharArray(left)^[1], pCharArray(p)^[sizeof(byte)], SizeLeft);
   Move(pCharArray(right)^[1], pCharArray(p)^[sizeof(byte)+SizeLeft], SizeRight);
 
   PlusString := p;
 end;
 
-{Функция присваивания значения строке}
+{Функция присваивания значения строке. Берет значение, которое нужно присвоить и отдает указатель на новую строку}
 Function ValueString(s: string):pointer;
 var p: pointer;
 begin
+  {Выделяем память и копируем туда значение}
   GetMem(p, sizeof(byte) + length(s));
   Move(s, p^, sizeof(char) + length(s));
 
   ValueString := p;
 end;
 
-{!! Функции рекурсивного спуска.}
+{!! ФУНКЦИИ РЕКУРСИВНОГО СПУСКА}
+
+{Функция обработки or}
 Function OrExpr:pTree;
 var left, tz: pTree;
     op: set of ident;
@@ -445,6 +494,7 @@ begin
   OrExpr := left;
 end;
 
+{Функция обработки and}
 Function AndExpr:pTree;
 var left, tz: pTree;
     op: set of Ident;
@@ -477,6 +527,7 @@ begin
   AndExpr := left;
 end;
 
+{{Функция обработки not}
 Function NotExpr:pTree;
 var left, tz: pTree;
     op: set of ident;
@@ -509,7 +560,7 @@ begin
   NotExpr := left;
 end;
 
-
+{Функция обработки сравнения(> <  == != <= >=)}
 Function CompareExpr:pTree;
 var left, tz: pTree;
     op: set of ident;
@@ -542,6 +593,7 @@ begin
   CompareExpr := left;
 end;
 
+{Функция обработки +-}
 Function Expression:pTree;
 var left, tz: pTree;
     op: set of ident;
@@ -574,7 +626,7 @@ begin
   Expression := left;
 end;
 
-
+{Функция обработки // * % /}
 Function Term:pTree;
 var left, tz: pTree;
     op: set of ident;
@@ -607,22 +659,26 @@ begin
   Term := left;
 end;
 
-
+{Функция обработки фактических значений}
 Function Factor:pTree;
 var tz: pTree;
     timeVar:pVars; 
     vrpointFunc: pFunc; vrNode: pNode;
 begin
   Case ch of
+    {Если лексема - идентефикатор}
     cmIdent: begin
+               {Проверяем на то, вдруг идентефикатор - функция}
                vrpointFunc := code;
                new(tz);
-
-               {Проверяем на то, вдруг идентефикатор - функция}
+               
+               {Перебираем все функции}
                while vrpointFunc <> nil do
                begin
+                {Если нашли функцию}
                 if vrpointFunc^.name = lex then
                 begin
+                  {Создаем временную ноду, чтоб обработать вызов функции функцией CommandFunc}
                   vrNode := NewElem(cmName);
                   CommandFunc(vrNode, vrpointFunc);
                   
@@ -642,18 +698,7 @@ begin
                {Если все таки не функция - рассматриваем его как переменную}
                tz^.index := GetIndex(Lex);
 
-               if tz^.index < 0 then
-               begin
-                 timeVar := VarName;
-                 while (timeVar^.name <> lex) and (timeVar <> nil) 
-                 do timeVar := timeVar^.next;
-               end
-               else
-               begin
-                 timeVar := func^.Vars;
-                 while (timeVar^.name <> lex) and (timeVar <> nil)
-                 do timeVar := timeVar^.next;
-               end;
+               timeVar := GetPointerForNameVar(tz^.index);
 
                tz^.Typ := cmVar;
                tz^.typeElem := timeVar^.type_;
@@ -1709,7 +1754,7 @@ begin
 end;
 
 begin
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'bfs.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
