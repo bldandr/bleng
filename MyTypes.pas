@@ -93,6 +93,7 @@ Type
                performans: byte;
                next: pFunc;
                typeReturn: ident;
+               count: integer;
                case type_:ident of
                  cmFunc: (tree: pNode);
                  cmUses: (body: pFunction);

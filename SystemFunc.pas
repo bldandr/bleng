@@ -33,6 +33,7 @@ begin
   Func := Func^.next; 
   Func^.performans := performans; 
   Func^.typeReturn := typeReturn;
+  Func^.count := performans;
 
   func^.type_ := cmUses; 
   func^.body := pfunct;
