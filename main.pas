@@ -1788,7 +1788,7 @@ begin
         pVarArray(Stack^.var_)^[i].v := GetValueVarForIndex(vr.i);
 
         {Если вдруг наша переменная - тоже var, то идем по ее ссылке и присваиваем ее}
-        if pVarArray(stack^.next^.var_)^[vr.i].type_ = cmVar then
+        if pVarArray(stack^.next^.var_)^[i].type_ = cmVar then
           pVarArray(Stack^.var_)^[i].v := pVarArray(stack^.next^.var_)^[vr.i].v
       end
       {Если наша переменная - это все таки не var-параметр, то}
@@ -1845,7 +1845,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'bfs.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
