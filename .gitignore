@@ -6,3 +6,4 @@ main
 test
 .vscode/
 !/examples/**/*.b
+*.png

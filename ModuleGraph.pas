@@ -252,6 +252,37 @@ begin
   IsMouseButtonPressedMod := res;
 end;
 
+{Функция LoadTexture}
+Function LoadTextureMod(var_:pointer):pValue;
+var name: string; res: pValue;
+begin
+  name := pString(pVarArray(var_)^[1].s)^;
+
+  new(res);
+  res^.type_ := cmCustom;
+  new(res^.k);
+
+  res^.k^.type_ := cmTexture2D;
+  GetMem(res^.k^.data, sizeof(TTexture));
+
+  TTexture(res^.k^.data^) := LoadTexture(PChar(name));
+
+  LoadTextureMod := res;
+end;
+
+{Функция DrawTexture}
+Function DrawTextureMod(var_:pointer):pValue;
+var texture: TTexture; x, y: integer;
+begin
+  texture := TTexture(pVarArray(var_)^[1].k^.data^);
+  x := pVarArray(var_)^[2].i;
+  y := pVarArray(var_)^[3].i;
+
+  DrawTexture(texture, x, y, WHITE);
+
+  DrawTextureMod := nil;
+end;
+
 
 begin
   varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmString;
@@ -297,4 +328,10 @@ begin
 
   varsmod[1] := cmInt;
   InitFunc(Func, 'MouseBTNPressed', 1, @IsMouseButtonPressedMod, varsmod, cmBool);
+
+  varsmod[1] := cmString;
+  InitFunc(Func, 'LoadTexture', 1, @LoadTextureMod, varsmod, cmCustom);
+
+  varsmod[1] := cmCustom; varsmod[2] := cmInt; varsmod[3] := cmInt;
+  InitFunc(Func, 'DrawTexture', 3, @DrawTextureMod, varsmod, cmName);
 end.

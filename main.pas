@@ -327,7 +327,7 @@ begin
   numNames := 1;
 
   {ЦИкл обрабатывает несколько переменных одного типа. 1 итерация цикла = 1 новый тип}
-  While ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] do
+  While ch in types do
   begin
     {Запоминаем наш нужный тип}
     type_ := ch;
@@ -371,7 +371,7 @@ begin
         end;
 
         {Если дальше не идет тип, то выдаем ошибку}
-        if ch in [cmInt,cmString,cmBool,cmFloat,cmChar] then typeArray := ch
+        if ch in types then typeArray := ch
         else Error('Требуется тип!');
         
         {Если дальше идет идентефикаторы, то создаем новые элементы в списке глобальных имен переменных и следовательно запоминаем их}
@@ -386,7 +386,7 @@ begin
       end;
       {Если не лексемы, которые должны идти дальше - выдаем ошибку}
       Ch := GetLex;
-      if not(Ch in [cmTZ,cmZP,cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool,cmFunc])
+      if not(Ch in [cmTZ,cmZP,cmFunc] + types)
       then Error('Требуется ";"!'){Если не ; ,}
       else if Ch <> cmTZ then
       begin
@@ -394,7 +394,7 @@ begin
         ch := GetLex;
         new(tz^.next); tz := tz^.next; tz^.next := nil;
         inc(numNames);
-        if ch in [cmInt,cmChar,cmFloat,cmString,cmKSO,cmBool] then
+        if ch in types then
           type_ := ch;
       end;
     until ch = cmTZ; {Выходим, если лексема - ;}
@@ -402,7 +402,7 @@ begin
     {Обработчик, если вдруг следущая лексема - это тип, то создаем элемент в списке названий глоабльных переменных и 
     увеличиваем количество глобальных переменных}
     ch := GetLex;
-    if ch in [cmInt,cmFloat,cmChar,cmString,cmKSO,cmBool] then
+    if ch in types then
     begin
       new(tz^.next); tz := tz^.next; tz^.next := nil; inc(numNames);
     end; 
@@ -457,6 +457,14 @@ begin
         pVarArray(var_)^[i].m^.Type_ := typeArray;
         GetMem(pVarArray(var_)^[i].m^.data, tz^.max_size*tz^.matrix_size*sizeof(tValue));
         FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*tz^.matrix_size*sizeof(tValue), 0);
+      end
+      else 
+      begin
+        new(pVarArray(var_)^[i].k);
+        pVarArray(var_)^[i].k^.type_ := pVarArray(var_)^[i].type_;
+        pVarArray(var_)^[i].k^.data := nil;
+        
+        pVarArray(var_)^[i].type_ := cmCustom; 
       end;
     end;
     tz := tz^.next;
@@ -1202,7 +1210,7 @@ begin
     ch := GetLex;
 
     {Если лексема - это тип, то сохраняем тип возврата. А иначе - cmName}
-    if ch in [cmint,cmString,cmBool,cmChar,cmFloat] then 
+    if ch in types then 
     begin
       Last^.typeReturn := ch;
       ch := GetLex; 
@@ -1216,7 +1224,7 @@ begin
       new(Last^.vars); tz := Last^.vars; tz^.next := nil;
       ch := GetLex;
       {Пока лексема - это тип, то}
-      while ch in [cmInt,cmString,cmFloat,cmBool,cmChar,cmKSO,cmVar] do
+      while ch in types do
       begin
         {Сохраняем первоначальный тип}
         type_ := ch;
@@ -1271,7 +1279,7 @@ begin
     end;
 
     {Проверяем, есть ли тип у функции. если есть - сохраняем}
-    if ch in [cmint,cmString,cmBool,cmChar,cmFloat] then 
+    if ch in types then 
     begin
       Last^.typeReturn := ch;
       ch := GetLex; 
@@ -1307,8 +1315,14 @@ begin
     ch := GetLex;
     if ch <> cmKSC then Error('Требуется ]!');
     ch := GetLex;
-    if ch in [cmInt,cmFloat,cmBool,cmChar,cmString] then TypeArray := ch
+    if ch in types then TypeArray := ch
     else Error('Требуется тип!');
+  end;
+
+  if ch in customTypes then 
+  begin
+    typeArray := ch;
+    type_ := cmCustom;
   end;
 
   ch := GetLex;
@@ -1366,7 +1380,7 @@ begin
       cmIdent: CommandIdent(Last);
       cmWhile: OperatorWhile(Last);
       cmRead: CommandRead(Last);
-      cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO: CommandCreateVar(Last);
+      cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO,cmTexture2D: CommandCreateVar(Last);
       cmReturn: CommandReturn(Last);
       cmElse: Error('Ошибка в операторе!');
     end;
@@ -1898,7 +1912,7 @@ begin
     reset(f);
 
     ch := GetLex;
-    if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
+    if ch in types then SectionVar; {Если дальше идет раздел var - вызываем его}
 
     if ch = cmFunc then ComandFunc(Code, func)
     else Error('Требуется хотя бы 1 функция!');
@@ -1919,7 +1933,7 @@ begin
   ch := GetLex;
   if ch = cmImport then ImportFile;
 
-  if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
+  if ch in types then SectionVar; {Если дальше идет раздел var - вызываем его}
 
   if ch = cmFunc then ComandFunc(Code, func)
   else Error('Требуется хотя бы 1 функция!');

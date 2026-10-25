@@ -10,15 +10,15 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
      cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
      cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
      cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmIdent);
+     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmCustom, cmTexture2D, cmIdent);
 
-const MaxLex = 52; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
+const MaxLex = 54; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
       ('', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', 'import', '');
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', 'import', '', 'Texture2D', '');
 
 {ТИПЫ}
 Type
@@ -30,6 +30,7 @@ Type
     pVars = ^tVars;
     pStack = ^tStack;
     pString = ^string;
+    pCustomInfo = ^tCustomInfo;
 
     {Указатель на функцию модуля}
      pFunction=  function(var_: pointer):pValue;
@@ -47,6 +48,12 @@ Type
                     Type_: Ident; 
                 end;
 
+     {Тип, описывающий кастомные типы}
+     tCustomInfo = record 
+                      type_: ident;
+                      data: pointer;
+                   end;
+
 
      {Универсальный тип значения переменных}
      tValue = record 
@@ -59,6 +66,7 @@ Type
                   cmArray: (a: ^tArrayInfo);
                   cmMatrix: (m: ^tMatrixInfo);
                   cmVar: (v: pValue);
+                  cmCustom: (k: pCustomInfo);
               end;
      
      {Тип дерева операций}
@@ -134,6 +142,7 @@ var
    Code: pFunc; {Указатель на начало списка функций для интерпретатора}
    Func: pFunc; {Указатель на последнюю функцию}
    ID: set of char; {Множество для возможных знаков идентефикатора}
+   types, customTypes: set of ident; {Множество всех типов}
 
 implementation
 
@@ -156,6 +165,9 @@ end;
 begin
   {Инициализация допустимых букв в идентефикаторах}
   ID := ['a'..'z', '0'..'9', 'A'..'Z', '_'];
+
+  types := [cmInt,cmKSO,cmChar,cmString,cmFloat,cmBool,cmTexture2D];
+  customTypes := [cmTexture2D];
 
   {Инициализация первых функций}
   Code := NewFunc('');
