@@ -102,6 +102,33 @@ begin
   Error('Нет такого идентефикатора: ' + id);
 end;
 
+{Функция, которая проверяет уникальность идентефикатора}
+Function CheckIdent(id: string):boolean;
+var tzFunc: pFunc; 
+    tz: pVars;
+begin
+  tzFunc := Code;
+  while tzFunc <> nil do 
+  begin
+    if tzFunc^.name = id then Error('Повтор идентефикатора: '+ id);
+    tzFunc := tzFunc^.next;
+  end;
+
+  tz := VarName;
+  while tz <> nil do 
+  begin
+    if tz^.name = id then Error('Повтор идентефикатора: ' + id);
+    tz := tz^.next;
+  end;
+
+  tz := func^.vars;
+  while tz <> nil do
+  begin
+    if tz^.name = id then Error('Повтор идентефикатора: ' + id);
+    tz := tz^.next;
+  end;
+end;
+
 {Функция, которая возвращает указатель на элемент динамического списка имен переменных(глобальных и локальных) по индексу}
 Function GetPointerForNameVar(index: integer):pVars;
 var tz: pVars;
@@ -311,6 +338,7 @@ begin
       {Если это просто имя - создаем новое звено в динамическом списке глоабльных переменных с нужным типом}
       if ch = cmIdent then
       begin
+        CheckIdent(lex);
         tz^.name := Lex;
         tz^.type_ := type_;
       end
@@ -350,6 +378,7 @@ begin
         ch := GetLex;
         if ch = cmIdent then 
         begin
+          CheckIdent(lex);
           tz^.name := lex; tz^.typeArray := typeArray;
         end
         else Error('Требуется идентефикатор!');
@@ -1153,6 +1182,10 @@ begin
   begin
     {Если лексема main, то берем первую иницализированную переменную + присваиваем ей имя, а иначе создаем новую функцию в списке и присваиваем ей имя}
     ch := GetLex;
+
+    {Проверка уникальности идентефикатора}
+    CheckIdent(lex);
+
     if lex = 'main' then
     begin
       Last := main;
@@ -1301,6 +1334,7 @@ begin
     if ch = cmIdent then {Если имя - запомнить}
     begin
       {Инициализировать идентефикатор}
+      CheckIdent(lex);
       tz^.name := lex; tz^.type_ := type_; tz^.next := nil;
       tz^.typeArray := typeArray;
       inc(Func^.count);
