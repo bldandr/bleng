@@ -1849,6 +1849,31 @@ begin
   end;
 end;
 
+procedure ImportFile;
+var tempF: text; tempSt: string;
+begin
+  while ch = cmImport do
+  begin
+    ch := GetLex;
+    
+    tempF := f;
+    tempSt := st;
+    st := '';
+
+    assign(f, lex);
+    reset(f);
+
+    ch := GetLex;
+    if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
+
+    if ch = cmFunc then ComandFunc(Code, func)
+    else Error('Требуется хотя бы 1 функция!');
+
+    f := tempF; st := tempSt;
+    ch := GetLex; ch := GetLex;
+  end;
+end;
+
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
   if ParamCount = 0 then assign(f, 'main.b')
@@ -1858,6 +1883,8 @@ begin
   reset(f);
 
   ch := GetLex;
+  if ch = cmImport then ImportFile;
+
   if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
 
   if ch = cmFunc then ComandFunc(Code, func)
