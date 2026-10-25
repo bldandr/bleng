@@ -1601,7 +1601,7 @@ begin
 end;
 
 {Интерпретация for}
-procedure InterFor(pFor: pNode);
+Function InterFor(pFor: pNode):pValue;
 var val: tValue;
     timeVar: ^tValue;
 begin
@@ -1623,13 +1623,13 @@ begin
   {Повторяем выполнение интерпретации, пока наша переменная меньше итогового значения}
   while timeVar^.i <= val.i do
   begin
-    Interpretator(pFor^.do_);
+    InterFor := Interpretator(pFor^.do_);
     inc(timeVar^.i);
   end;
 end;
 
 {Процедура интерпретации цикла while}
-Procedure InterWhile(p: pNode);
+Function InterWhile(p: pNode):pValue;
 var val: tValue;
 begin
   {Получаем значение условия}
@@ -1640,7 +1640,7 @@ begin
   {Пока условие верно - интерпретируем тело и получаем условие снова}
   while val.b do
   begin
-    Interpretator(p^.doWhile_);
+    InterWhile := Interpretator(p^.doWhile_);
     Evaltree(p^.opWhile, val);
   end;
 end;
@@ -1677,13 +1677,13 @@ end;
 
 
 {Процедура интерпретации оператора ветвления}
-Procedure InterIf(p: pNode);
+Function InterIf(p: pNode):pValue;
 var val: tValue;
 begin
   {Получаем значение условия. Если верно - выполняем тело then, иначе - else}
   EvalTree(p^.op, val);
-  if val.b = True then Interpretator(p^.then_)
-  else if p^.else_ <> nil then Interpretator(p^.else_);
+  if val.b = True then InterIf := Interpretator(p^.then_)
+  else if p^.else_ <> nil then InterIf := Interpretator(p^.else_);
 end;
 
 {Функция интерпретации команды return}
@@ -1837,11 +1837,11 @@ begin
     case p^.Typ of
       cmWrite: InterWrite(p);
       cmWriteln: InterWriteLn(p);
-      cmIf: InterIf(p);
+      cmIf: Interpretator := InterIf(p);
       cmIdent: InterIdent(p);
       cmFunc: InterFunc(p^.indexFunc, p^.vars);
-      cmFor: InterFor(p);
-      cmWhile: InterWhile(p);
+      cmFor: Interpretator := InterFor(p);
+      cmWhile: Interpretator := InterWhile(p);
       cmRead: InterRead(p);
       cmReturn: Interpretator := InterReturn(p);
     end;
