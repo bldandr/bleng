@@ -1783,13 +1783,23 @@ begin
       begin
         {Определяем индекс переменной}
         EvalTree(pTreeArray(vars)^[i], vr);
-        
+
+        {переходим к следущему элементу стека, чтоб верно определился адрес переменной}
+        timeStack := stack;
+        stack := stack^.next;
+
         {Присваиваем параметру адрес переменной}
-        pVarArray(Stack^.var_)^[i].v := GetValueVarForIndex(vr.i);
+        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(vr.i);
+
+        {Возвращаем стек}
+        stack := timeStack;
 
         {Если вдруг наша переменная - тоже var, то идем по ее ссылке и присваиваем ее}
-        if pVarArray(stack^.next^.var_)^[i].type_ = cmVar then
-          pVarArray(Stack^.var_)^[i].v := pVarArray(stack^.next^.var_)^[vr.i].v
+        if vr.i > 0 then 
+        begin
+          if pVarArray(stack^.next^.var_)^[vr.i].type_ = cmVar then
+            pVarArray(Stack^.var_)^[i].v := pVarArray(stack^.next^.var_)^[vr.i].v;
+        end;
       end
       {Если наша переменная - это все таки не var-параметр, то}
       else
@@ -1845,7 +1855,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'bfs.b')
+  if ParamCount = 0 then assign(f, 'main.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
