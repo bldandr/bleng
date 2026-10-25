@@ -1151,9 +1151,13 @@ begin
   {Пока лексема - фукнция, обрабатываемся}
   while ch = cmFunc do
   begin
-    {Если лексема main, то берем первую иницализированную переменную, а иначе создаем новую функцию в списке и присваиваем ей имя}
+    {Если лексема main, то берем первую иницализированную переменную + присваиваем ей имя, а иначе создаем новую функцию в списке и присваиваем ей имя}
     ch := GetLex;
-    if lex = 'main' then Last := main
+    if lex = 'main' then
+    begin
+      Last := main;
+      Last^.name := lex;
+    end
     else
     begin
       if ch = cmIdent then last^.next := NewFunc(lex)
@@ -1727,15 +1731,7 @@ begin
   begin
     {Если тип - массив, то чистим сам массив в памяи}
     case pVarArray(p)^[i].type_ of
-      cmArray:
-      begin
-        FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
-      end;
-      {cmString:
-      begin
-        SizeString := byte(pVarArray(p)^[i].s^)+sizeof(char);
-        Freemem(pVarArray(p)^[i].s, SizeString);
-      end;}
+      cmArray: FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
     end;
   end; 
   {Очищаем  стек переменных}
@@ -1863,8 +1859,11 @@ begin
 
   ch := GetLex;
   if ch in [cmInt,cmFloat,cmBool,cmKSO,cmChar,cmString] then SectionVar; {Если дальше идет раздел var - вызываем его}
+
   if ch = cmFunc then ComandFunc(Code, func)
   else Error('Требуется хотя бы 1 функция!');
+
+  if code^.name <> 'main' then Error('Требуется фукнция main!');
 
   InterFunc(Code, nil); {Вызываем выполнение команд}
 

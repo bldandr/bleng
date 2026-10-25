@@ -158,7 +158,7 @@ begin
   ID := ['a'..'z', '0'..'9', 'A'..'Z', '_'];
 
   {Инициализация первых функций}
-  Code := NewFunc('main');
+  Code := NewFunc('');
   func := Code;
     
 end.
