@@ -285,7 +285,7 @@ begin
   varsmod[1] := cmInt;
   InitFunc(Func, 'IsKeyPressed', 1, @IsKeyPressedMod, varsmod, cmBool);
 
-  varsmod[1] := cmString; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
+  varsmod[1] := cmInt; varsmod[2] := cmInt; varsmod[3] := cmInt; varsmod[4] := cmInt; varsmod[5] := cmInt;
   InitFunc(Func, 'DrawEllipse', 5, @DrawEllipseMod, varsmod, cmName);
 
   varsmod[1] := cmInt;
