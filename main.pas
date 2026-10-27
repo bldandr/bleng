@@ -465,6 +465,8 @@ begin
         pVarArray(var_)^[i].k^.data := nil;
         
         pVarArray(var_)^[i].type_ := cmCustom; 
+
+        tz^.type_ := cmCustom;
       end;
     end;
     tz := tz^.next;
