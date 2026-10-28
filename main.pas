@@ -1226,7 +1226,7 @@ begin
       new(Last^.vars); tz := Last^.vars; tz^.next := nil;
       ch := GetLex;
       {Пока лексема - это тип, то}
-      while ch in types do
+      while ch in types + [cmVar] do
       begin
         {Сохраняем первоначальный тип}
         type_ := ch;
@@ -1926,7 +1926,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'examples/rougle.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}

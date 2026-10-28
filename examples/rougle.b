@@ -5,7 +5,7 @@ int iEnemy, jEnemy;
 int hp, gold, level;
 int gameover;
 int enemyTick;
-Texture2D brick;
+Texture2D brick, zombie, steve, goldim, portal, zele;
 
 func InitGame {
     maxRow = 15;
@@ -18,12 +18,19 @@ func InitGame {
     jPlayer = 2;
     iEnemy = 12;
     jEnemy = 12;
+};
 
-    brick = LoadTexture("images/break.png");
+func InitTexture {
+    brick = LoadTexture("examples/images/brick.png");
+    zombie = LoadTexture("examples/images/zombie.png");
+    steve = LoadTexture("examples/images/steve.png");
+    goldim = LoadTexture("examples/images/gold.png");
+    portal = LoadTexture("examples/images/portal.png");
+    zele = LoadTexture("examples/images/zele.png");
 };
 
 func GenerateMap {
-    int i, j;
+    int i, j; 
     for i = 1 to maxRow do {
         for j = 1 to maxCol do {
             if (i == 1) or (i == maxRow) or (j == 1) or (j == maxCol) then {
@@ -39,10 +46,15 @@ func GenerateMap {
     matr[10][3] = 1; matr[10][4] = 1;
     matr[3][10] = 1; matr[4][10] = 1;
     
-    matr[8][12] = 3; # Лестница
-    matr[4][4] = 2;  # Золото
-    matr[7][2] = 2;  # Золото
-    matr[12][5] = 2; # Золото
+    i = random(1, maxRow); j = random(1, maxCol);
+    while matr[i][j] != 0 do {i = random(2, maxRow-1); j = random(2, maxCol-1);};
+    matr[i][j] = 3; # Лестница
+    while matr[i][j] != 0 do {i = random(2, maxRow-1); j = random(2, maxCol-1);};
+    matr[i][j] = 2;  # Золото
+    while matr[i][j] != 0 do {i = random(2, maxRow-1); j = random(2, maxCol-1);};
+    matr[i][j] = 2;  # Золото
+    while matr[i][j] != 0 do {i = random(2, maxRow-1); j = random(2, maxCol-1);};
+    matr[i][j] = 2; # Золото
     
     matr[3][2] = 4;  # Зелье здоровья (хилка)
     matr[9][8] = 4;  # Зелье здоровья
@@ -56,27 +68,25 @@ func DrawAll {
         for i = 1 to maxRow do {
             for j = 1 to maxCol do {
                 if matr[i][j] == 1 then {
-                    DrawTexture(brick, j*35-35, i*35-35); # Стены
+                    DrawTexture(brick, j*35-35, i*35-35); 
                 };
                 if matr[i][j] == 2 then {
-                    DrawRectangle(j*35-25, i*35-25, 15, 15, 6); # Золото
+                    DrawTexture(goldim, j*35-35, i*35-35);
                 };
                 if matr[i][j] == 3 then {
-                    DrawRectangle(j*35-30, i*35-30, 25, 25, 3); # Лестница
+                    DrawTexture(portal, j*35-35, i*35-35);
                 };
                 if matr[i][j] == 4 then {
-                    DrawRectangle(j*35-25, i*35-25, 15, 15, 3); # Зеленая хилка
+                    DrawTexture(zele, j*35-25, i*35-25); 
                 };
             }
         };
 
         # Игрок
-        DrawRectangle(jPlayer*35-30, iPlayer*35-30, 25, 25, 10);
-        DrawText("@", jPlayer*35-24, iPlayer*35-28, 20, 0);
-
+        DrawTexture(steve, jPlayer*35-35, iPlayer*35-35);
+        
         # Враг
-        DrawRectangle(jEnemy*35-30, iEnemy*35-30, 25, 25, 2);
-        DrawText("g", jEnemy*35-22, iEnemy*35-28, 20, 0);
+        DrawTexture(zombie, jEnemy*35-35, iEnemy*35-35);
 
         # Статы на экране
         DrawText("HP:", 20, 540, 20, 15);
@@ -188,6 +198,7 @@ func main {
     InitGame;
     GenerateMap;
     InitGraph(600, 600, "Рогалик");
+    InitTexture;
 
     while WindowNotClose do {
         if gameover == 0 then {
