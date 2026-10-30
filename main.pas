@@ -158,6 +158,43 @@ begin
   else GetValueVarForIndex := @pVarArray(stack^.var_)^[index];
 end;
 
+{Функция, которая проверяет, имя - это тип или нет}
+function IsType(s: string):boolean;
+var tz: pTypes; 
+begin
+  tz := ListTypes;
+  // index := 1;
+
+  while (tz <> nil) and (tz^.name <> s) do
+  begin
+    // inc(index);
+    tz := tz^.next;
+  end;
+
+  if tz <> nil then IsType := true
+  else 
+  begin
+    IsType := False;// index := 0;
+  end;
+end;
+
+{Функция получения индекса кастомного типа}
+function GetIndexType(s: string):integer;
+var tz: pTypes; index: integer;
+begin
+  tz := ListTypes;
+  index := 1;
+
+  while (tz <> nil) and (tz^.name <> s) do
+  begin
+    inc(index);
+    tz := tz^.next;
+  end;
+
+  GetIndexType := index;
+end;
+
+
 {Функция получения типа от имени. Перебирает по именам все переменные и вовзращает тип нужной}
 Function GetType(id: string):ident;
 var i: integer;
@@ -315,10 +352,80 @@ begin
   GetLex := ii;
 end;
 
+{Процедура обработки структуры}
+procedure SectionStruct;
+var tz: pTypes; tzVars: pVars;
+    type_: ident;
+begin
+  {Перебираем до конца списка типов и создаем его}
+  if ListTypes = nil then
+  begin
+    new(ListTypes); tz := ListTypes; tz^.next := nil;
+  end
+  else 
+  begin
+    tz := ListTypes;
+    while tz^.next <> nil do tz := tz^.next;
+
+    new(tz); tz^.next := nil;
+  end;
+
+  {Обрабатываем имя структуры}
+  ch := GetLex;
+  if ch = cmIdent then tz^.name := lex
+  else Error('Требуется имя структуры!');
+  
+  {Проверка на фигурную скобку}
+  ch := GetLex;
+  if ch = cmFSO then ch := GetLex
+  else Error('Требуется {!');
+
+  tz^.vars := nil;
+
+  {Обработка типов с именами}
+  while ch in types do
+  begin
+    if tz^.vars = nil then
+    begin
+      new(tz^.vars); tzVars := tz^.vars; tzVars^.next := nil;
+    end
+    else
+    begin
+      new(tzVars^.next); tzVars := tzVars^.next; tzVars^.next := nil;
+    end;
+
+    type_ := ch;
+    
+    ch := GetLex;
+    while ch = cmIdent do
+    begin
+      tzVars^.type_ := type_;
+      tzVars^.name := lex;
+
+      {Обрабатываем запятые. если запятая, то создаем новый элемент в списке элементов}
+      ch := GetLex;
+      if ch = cmZP then 
+      begin
+        new(tzVars^.next); tzVars := tzVars^.next;
+        tzVars^.next := nil;
+
+        ch := GetLex; 
+        if ch <> cmIdent then Error('Требуется идентефикатор!');
+      end; 
+    end;
+    if ch = cmTZ then ch := GetLex;
+  end;
+
+  if ch = cmFSC then ch := GetLex
+  else Error('Требуется }!');
+
+  if ch = cmTZ then ch := GetLex;
+end;
+
 {Процедура обработки объявления глобальных переменных}
 Procedure SectionVar;
 var i: integer;
-    type_, typeArray: ident;
+    type_, typeArray: ident; index_custom_type_: integer;
     tz: pVars;
     numNames: integer;
 begin
@@ -327,10 +434,11 @@ begin
   numNames := 1;
 
   {ЦИкл обрабатывает несколько переменных одного типа. 1 итерация цикла = 1 новый тип}
-  While ch in types do
+  While (ch in types) or (IsType(lex)) do
   begin
     {Запоминаем наш нужный тип}
     type_ := ch;
+    if type_ = cmIdent then index_custom_type_ := GetIndexType(lex);
     ch := GetLex;
 
     {ЦИкл, который обрабатывает несколько переменных одного типа}
@@ -340,6 +448,7 @@ begin
       begin
         CheckIdent(lex);
         tz^.name := Lex;
+        tz^.index_custom_type_ := index_custom_type_;
         tz^.type_ := type_;
       end
       {Если тип, который мы запомнили - это "[", то значит, что это массив. Обрабатываем переменную, как массив}
@@ -463,6 +572,7 @@ begin
         new(pVarArray(var_)^[i].k);
         pVarArray(var_)^[i].k^.type_ := pVarArray(var_)^[i].type_;
         pVarArray(var_)^[i].k^.data := nil;
+        pVarArray(var_)^[i].k^.index := tz^.index_custom_type_;
         
         pVarArray(var_)^[i].type_ := cmCustom; 
 
@@ -1926,7 +2036,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'examples/rougle.b')
+  if ParamCount = 0 then assign(f, 'main.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
@@ -1935,7 +2045,10 @@ begin
   ch := GetLex;
   if ch = cmImport then ImportFile;
 
-  if ch in types then SectionVar; {Если дальше идет раздел var - вызываем его}
+  if ch in [cmStruct] then SectionStruct;
+
+  if (ch in types) or (IsType(lex)) then 
+    SectionVar; {Если дальше идет раздел var - вызываем его}
 
   if ch = cmFunc then ComandFunc(Code, func)
   else Error('Требуется хотя бы 1 функция!');

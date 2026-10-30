@@ -10,15 +10,16 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
      cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
      cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
      cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmCustom, cmTexture2D, cmIdent);
+     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmCustom, cmTexture2D, cmStruct, cmIdent);
 
-const MaxLex = 54; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
+const MaxLex = 55; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
       ('', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
-      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', 'import', '', 'Texture2D', '');
+      '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', 'import', '', 'Texture2D',
+      'struct', '');
 
 {ТИПЫ}
 Type
@@ -31,6 +32,8 @@ Type
     pStack = ^tStack;
     pString = ^string;
     pCustomInfo = ^tCustomInfo;
+    pIndex = ^tIndex;
+    pTypes = ^tTypes;
 
     {Указатель на функцию модуля}
      pFunction=  function(var_: pointer):pValue;
@@ -51,6 +54,7 @@ Type
      {Тип, описывающий кастомные типы}
      tCustomInfo = record 
                       type_: ident;
+                      index: integer;
                       data: pointer;
                    end;
 
@@ -110,10 +114,9 @@ Type
      {Тип названий переменных}
      tVars = record
                name: str15;
-               type_: ident;
-               max_size: word;
-               matrix_size: word;
-               typeArray: ident;
+               type_, typeArray: ident;
+               max_size, matrix_size: word;
+               index_custom_type_: integer;
                next: pVars;
              end;
 
@@ -121,6 +124,19 @@ Type
      tStack = record 
                 var_: pointer;
                 next: pStack;
+              end;
+
+     {Тип описания типов}
+     tTypes = record
+                name: str15;
+                vars: pVars;
+                next: pTypes;
+              end;
+
+     {Тип описания индексов переменных}
+     tIndex = record
+                index: integer;
+                next: pIndex;
               end;
 
     {Типы для приведения нетипизированных указателей и указатели на них}
@@ -143,6 +159,7 @@ var
    Func: pFunc; {Указатель на последнюю функцию}
    ID: set of char; {Множество для возможных знаков идентефикатора}
    types, customTypes: set of ident; {Множество всех типов}
+   ListTypes: pTypes;
 
 implementation
 
@@ -172,5 +189,8 @@ begin
   {Инициализация первых функций}
   Code := NewFunc('');
   func := Code;
+  
+  {Инициплизация переменной списка типов}
+  ListTypes := nil;
     
 end.
