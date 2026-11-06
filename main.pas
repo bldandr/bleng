@@ -179,19 +179,17 @@ begin
 end;
 
 {Функция получения индекса кастомного типа}
-function GetIndexType(s: string):integer;
-var tz: pTypes; index: integer;
+function GetIndexType(s: string):pTypes;
+var tz: pTypes; 
 begin
   tz := ListTypes;
-  index := 1;
 
   while (tz <> nil) and (tz^.name <> s) do
   begin
-    inc(index);
     tz := tz^.next;
   end;
 
-  GetIndexType := index;
+  GetIndexType := tz;
 end;
 
 
@@ -370,6 +368,8 @@ begin
     new(tz); tz^.next := nil;
   end;
 
+  tz^.countVar := 0;
+
   {Обрабатываем имя структуры}
   ch := GetLex;
   if ch = cmIdent then tz^.name := lex
@@ -401,6 +401,7 @@ begin
     begin
       tzVars^.type_ := type_;
       tzVars^.name := lex;
+      inc(tz^.countVar);
 
       {Обрабатываем запятые. если запятая, то создаем новый элемент в списке элементов}
       ch := GetLex;
@@ -422,10 +423,25 @@ begin
   if ch = cmTZ then ch := GetLex;
 end;
 
+{Процедура, которая инициализирует типы в куче памяти для кастомных типов}
+procedure InitCustomElements(p: pointer; type_: pTypes);
+var vars: pVars; i: integer;
+begin
+  vars := type_^.vars;
+  i := 1;
+
+  while vars <> nil do
+  begin
+    pVarArray(p)^[i].type_ := vars^.type_;
+
+    vars := vars^.next; inc(i);
+  end; 
+end;
+
 {Процедура обработки объявления глобальных переменных}
 Procedure SectionVar;
 var i: integer;
-    type_, typeArray: ident; index_custom_type_: integer;
+    type_, typeArray: ident; index_custom_type_: pTypes;
     tz: pVars;
     numNames: integer;
 begin
@@ -570,8 +586,11 @@ begin
       else 
       begin
         new(pVarArray(var_)^[i].k);
+        pVarArray(var_)^[i].type_ := cmCustom;
         pVarArray(var_)^[i].k^.type_ := pVarArray(var_)^[i].type_;
-        pVarArray(var_)^[i].k^.data := nil;
+        GetMem(pVarArray(var_)^[i].k^.data, index_custom_type_^.countVar*sizeof(tValue));
+        InitCustomElements(pVarArray(var_)^[i].k^.data, index_custom_type_);
+
         pVarArray(var_)^[i].k^.index := tz^.index_custom_type_;
         
         pVarArray(var_)^[i].type_ := cmCustom; 

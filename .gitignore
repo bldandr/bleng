@@ -7,3 +7,4 @@ test
 .vscode/
 !/examples/**/*.b
 *.png
+plan.md

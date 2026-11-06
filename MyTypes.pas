@@ -54,7 +54,7 @@ Type
      {Тип, описывающий кастомные типы}
      tCustomInfo = record 
                       type_: ident;
-                      index: integer;
+                      index: pTypes;
                       data: pointer;
                    end;
 
@@ -116,7 +116,7 @@ Type
                name: str15;
                type_, typeArray: ident;
                max_size, matrix_size: word;
-               index_custom_type_: integer;
+               index_custom_type_: pTypes;
                next: pVars;
              end;
 
@@ -130,6 +130,7 @@ Type
      tTypes = record
                 name: str15;
                 vars: pVars;
+                countVar: integer;
                 next: pTypes;
               end;
 
