@@ -152,10 +152,21 @@ begin
 end;
 
 {Функция, которая возвращает значение переменной по индеку}
-function GetValueVarForIndex(index: integer):pValue;
+function GetValueVarForIndex(index: pIndex):pValue;
+var IndexN: integer; val: pValue;
 begin
-  if index < 0 then GetValueVarForIndex := @pVarArray(var_)^[abs(index)]
-  else GetValueVarForIndex := @pVarArray(stack^.var_)^[index];
+  IndexN := index^.index;
+
+  if indexN < 0 then val := @pVarArray(var_)^[abs(indexN)]
+  else val := @pVarArray(stack^.var_)^[indexN];
+
+  if val^.type_ = cmCustom then
+  begin
+    index := index^.next;
+    val := @pVarArray(val^.k^.data)^[index^.index];
+  end;
+
+  GetValueVarForIndex := val;
 end;
 
 {Функция, которая проверяет, имя - это тип или нет}
@@ -190,6 +201,18 @@ begin
   end;
 
   GetIndexType := tz;
+end;
+
+{Функция, которая от индекса возвращает указатель на звено в списке типов и именов пеерменных}
+Function GetPointerFotListNameVar(index: integer):pVars;
+var i: integer; tz: pVars;
+begin
+  if index < 0 then tz := VarName
+  else tz := func^.vars;
+
+  for i := 1 to abs(index)-1 do tz := tz^.next; 
+
+  GetPointerFotListNameVar := tz;
 end;
 
 
@@ -291,7 +314,7 @@ begin
                 Lex := Copy(st, 1, i);
                 Delete(st, 1, i);
               end;
-    ':',';',',','{','}','(',')','[',']','+','-','*','%':
+    ':',';',',','{','}','(',')','[',']','+','-','*','%','.':
     begin
       Lex := copy(st,1,1);
       Delete(st, 1, 1);
@@ -602,6 +625,39 @@ begin
   end;
 end;
 
+{Функция посмотроения списка индекса}
+Function BuildIndexList:pIndex;
+var index: integer; tz, tzVars: pVars; ListIndex, tzList: pIndex; tzType: pTypes; i: integer;
+begin
+  index := GetIndex(lex);
+  tz := GetPointerFotListNameVar(index);
+
+  new(ListIndex); ListIndex^.next := nil;  
+  ListIndex^.index := index; tzList := ListIndex;
+
+  if tz^.type_ = cmCustom then
+  begin
+    ch := GetLex; 
+    if ch = cmT then ch := GetLex
+    else Error('Требуется точка!'); 
+
+    new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
+
+    tzVars := tz^.index_custom_type_^.vars;
+
+    i := 1;
+
+    while (tzVars <> nil) and (tzVars^.name <> lex) do 
+    begin
+      tzVars := tzVars^.next; inc(i);
+    end;
+
+    tzList^.index := i;
+  end;
+
+  BuildIndexList := ListIndex;
+end;
+
 {Функция сложения строк. На вход берет два указателя на строки и возвращает другой указатель с полной строкой}
 Function PlusString(left, right:pointer):pointer;
 var SizeLeft, SizeRight, SizeTotal: byte;
@@ -633,6 +689,24 @@ begin
 
   ValueString := p;
 end;
+
+{Функция, которая по списку индексов отдает тип переменной}
+function GetTypeVar(index: pIndex):ident;
+var i: integer; vars: pVars;
+begin
+  vars := GetPointerFotListNameVar(index^.index);
+
+  while vars^.type_ = cmCustom do
+  begin
+    index := index^.next;
+    vars := vars^.index_custom_type_^.vars;
+
+    for i := 1 to index^.index-1 do vars := vars^.next;
+  end;
+  
+  GetTypeVar := vars^.type_;
+end;
+
 
 {!! ФУНКЦИИ РЕКУРСИВНОГО СПУСКА}
 
@@ -871,48 +945,11 @@ begin
                end;
 
                {Если все таки не функция - рассматриваем его как переменную}
-               tz^.index := GetIndex(Lex);
-
-               {Получаем указатель по индексу}
-               timeVar := GetPointerForNameVar(tz^.index);
+               tz^.index := BuildIndexList;
 
                {Инициализируем звено}
                tz^.Typ := cmVar;
-               tz^.typeElem := timeVar^.type_;
-
-               {Если у нас var-параметр, то присваиваем тип массива, т.к. там лежит фактический тип}
-               if timeVar^.type_ = cmVar then tz^.typeElem := timeVar^.typeArray;
-
-               case timeVar^.Type_ of
-                  cmArray: begin
-                              {Если наша переменная - массив, то обрабатываем индекс}
-                              ch := GetLex;
-                              if ch = cmKSO then
-                              begin
-                                ch := GetLex;
-                                tz^.num := OrExpr;
-                                if ch <> cmKSC then Error('Требуется "]"!');
-                              end;
-                              tz^.typeElem := timeVar^.typeArray;
-                            end;
-                  cmMatrix: begin
-                              {Если матрица, то обрабатываем два индекса}
-                              ch := GetLex;
-                              if ch = cmKSO then 
-                              begin
-                                ch := GetLex;
-                                tz^.num := OrExpr;
-                                if ch <> cmKSC then Error('Требуется "]"!');
-
-                                ch := GetLex;
-                                if ch <> cmKSO then Error('Для матрицы требуется "["!');
-                                ch := GetLex;
-                                tz^.numj := OrExpr;
-                                if ch <> cmKSC then Error('Требуется "]"!');
-                              end;
-                              tz^.typeElem := timeVar^.typeArray;
-                            end;
-               end;
+               tz^.typeElem := GetTypeVar(tz^.index);
              end;
     cmConst: begin
                {Если наше фактическое значение - константа(строковая), то определяем ее тип в строку и присваиваем значения}
@@ -979,56 +1016,24 @@ end;
 {Обработка команды присваивания переменной}
 procedure CommandVar(var Last: pNode; index: integer);
 var 
-    val: pVars;
+    indexVar: pIndex;
 begin
   {Добавляем новый элемент в AST}
   AddElem(Last, NewElem(cmIdent));
 
   {Получаем указатель на звено в списке имен переменных}
-  val := GetPointerForNameVar(index);
-
+  indexVar := BuildIndexList;
   ch := GetLex;
 
-  if val^.Type_ = cmArray then
-  begin
-    {Если тип - массив, то обарабтываем индекс}
-    if ch = cmKSO then ch := GetLex
-    else Error('Требуется "["!');
-
-    Last^.TreeIndex := OrExpr;
-
-    if ch = cmKSC then ch := GetLex
-    else Error('Требуется "]"!');
-  end;
-
-  if val^.type_ = cmMatrix then
-  begin
-    {Если тип - матрица, то обрабатываем 2 индекса}
-    if ch = cmKSO then ch := GetLex
-    else Error('Требуется "["!');
-
-    Last^.TreeIndex := OrExpr;
-
-    if ch = cmKSC then ch := GetLex
-    else Error('Требуется "]"!');
-
-    if ch = cmKSO then ch := GetLex
-    else Error('Требуется "[" в матрице!');
-
-    Last^.treeIndexj := OrExpr;
-
-    if ch = cmKSC then ch := GetLex
-    else Error('Требуется "]"!');
-  end;
 
   if ch = cmRavno then
   begin
     {Если лексема - присваивание, то вызываем рекурсивный спуск на значение и проверяем типы}
     ch := GetLex;
     Last^.treeVar := OrExpr;
-    if (val^.type_ <> Last^.treeVar^.typeElem) and (val^.typeArray <> Last^.treeVar^.typeElem) 
+    if (GetTypeVar(indexVar) <> Last^.treeVar^.typeElem)
     then Error('Несоответствие типов.');
-    Last^.index := index;
+    Last^.index := indexVar;
   end
   else Error('Требуется "="!');
 end;
@@ -1210,7 +1215,7 @@ begin
   ch := GetLex;
   if ch = cmIdent then
   begin
-    Last^.indexFor := GetIndex(Lex);
+    Last^.indexFor := BuildIndexList;
     ch := GetLex
   end
   else Error('Требуется идентефикатор!');
@@ -1272,7 +1277,7 @@ begin
   ch := GetLex;
   if ch = cmSO then ch := GetLex
   else Error('Требуется "("!');
-  if ch = cmIdent then Last^.indexRead := GetIndex(Lex);
+  if ch = cmIdent then Last^.indexRead := BuildIndexList;
   Last^.indexArrayRead := nil;
  
   {если наша переменная - массив, то обрабатываем еще и индекс массива}
@@ -1632,46 +1637,6 @@ begin
   end;
 end;
 
-{Получение значение переменной}
-Procedure ReturnValueVar(index: integer; pNum, pNumj: pTree; var res: tValue);
-var num, numj: tValue;
-    RealVar: tValue;
-begin
-  {Получаем значение переменной по индексу}
-  RealVar := GetValueVarForIndex(index)^;
-
-  {Если переменная - массив}
-  if RealVar.Type_ = cmArray then
-  begin
-    {Получаем значение индекса}
-    EvalTree(pNum, num);
-    {Проверякем выход за груницы}
-    if num.i > RealVar.a^.size then
-      Error('Выход за пределы массива!');
-    {Возвращаем значение}
-    res := pVarArray(RealVar.a^.data)^[num.i];
-    res.Type_ := RealVar.a^.Type_;
-  end
-  {Если переменная - матрица}
-  else if RealVar.Type_ = cmMatrix then
-  begin
-    {Получаем значение строки и столбца}
-    EvalTree(pNum, num); EvalTree(pNumj, numj);
-
-    {Проверяем выход за пределы}
-    if num.i > RealVar.m^.sizei then Error('Выход за пределы матрицы!');
-    if numj.i > RealVar.m^.sizej then Error('Выход за пределы матрицы!');
-
-    {Возвращаем значение}
-    Res := pVarArray(RealVar.m^.data)^[num.i*RealVar.m^.sizei + numj.i];
-    Res.Type_ := RealVar.m^.type_;
-  end
-  {Если тип - Var, то возвращаем значение по ссылке}
-  else if RealVar.Type_ = cmVar then Res := RealVar.v^
-  {Иначе просто возвращаем значение}
-  else res := RealVar;
-end;
-
 {Процедура затирания дерева}
 Procedure DisposeTree(var p: pTree);
 begin
@@ -1703,7 +1668,7 @@ begin
     else begin {Если наш узел - не операция, то обрабатываем его как}
            case p^.Typ of                {переменную/константу}
              cmConst: Res := p^.value; {Конст - просто отдаем значение}
-             cmVar: ReturnValueVar(p^.index, p^.num, p^.numj, res); {Идентефикатор - возвращаем значение переменной}
+             cmVar: res := GetValueVarForIndex(p^.index)^; {Идентефикатор - возвращаем значение переменной}
              cmFunc:
              begin {Функция - интерпретируем функцию и возвращаем значение}
                new(pRes);
@@ -1741,41 +1706,8 @@ begin
   {Получаем указатель на переменную}
   timeVar := GetValueVarForIndex(p^.index);
 
-  {Если тип - var-параметр, то возвращаем указатель var}
-  if timeVar^.Type_ = cmVar then timeVar := timeVar^.v;
-
-  {Если тип - массив}
-  if timeVar^.Type_ = cmArray then
-  begin
-    {Получить индекс массива}
-    EvalTree(p^.treeIndex, Index);
-
-    {Получаем выход за пределы массива и соотвествие типов, если все норм - присваиваем значение}
-    if index.i > timeVar^.a^.size then
-      Error('Выход за пределы массива!');
-    if timeVar^.a^.Type_ <> val.Type_ then
-      Error('Несоответствие типов.')
-    else
-      pVarArray(timeVar^.a^.data)^[index.i] := val;
-  end
-  {Если тип - матрица}
-  else if timeVar^.Type_ = cmMatrix then
-  begin
-    {Получаем строку и столбец}
-    EvalTree(p^.treeIndex, Index);
-    EvalTree(p^.treeIndexj, Indexj);
-    
-    {Првоеряем выход за пределы массива + соответствие типов, если все норм - присваиваем значение}
-    if (index.i > timeVar^.m^.sizei) or (indexj.i > timeVar^.m^.sizej) then
-      Error('Выход за пределы массива!');
-    if timeVar^.m^.Type_ <> val.Type_ then
-      Error('Несоответствие типов.')
-    else
-      pVarArray(timeVar^.m^.data)^[index.i*timeVar^.m^.sizei + indexj.i] := val;
-  end 
-  {Если не массив и не матрица - сразу присваиваем значение. Иначе ошибка}
-  else if ((timeVar^.Type_ = val.Type_) or SoulTypes(timeVar^.Type_, val.Type_)) then
-         timeVar^ := val
+  if ((timeVar^.Type_ = val.Type_) or SoulTypes(timeVar^.Type_, val.Type_)) then
+    timeVar^ := val
   else Error('Несоответствие типов.')
 end;
 
@@ -1964,7 +1896,7 @@ begin
         stack := stack^.next;
 
         {Присваиваем параметру адрес переменной}
-        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(vr.i);
+        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(pIndex(vr.v));
 
         {Возвращаем стек}
         stack := timeStack;

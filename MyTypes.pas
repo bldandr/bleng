@@ -10,16 +10,16 @@ Type str15 = string[15]; {Строка в 15 байт, чтоб не заним�
      cmOpNR, cmNot, cmAnd, cmOr, cmThen, cmFor, cmDo, cmElse, cmTo,
      cmWhile, cmRead, cmKSO, cmKSC, cmArray, cmPlus, cmMinus, cmCdot,
      cmDiv, cmMod, cmChar, cmFloat, cmFrac, cmNumberFloat, cmWriteln,
-     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmCustom, cmTexture2D, cmStruct, cmIdent);
+     cmFunc, cmReturn, cmUses, cmMatrix, cmImport, cmCustom, cmTexture2D, cmStruct, cmT, cmIdent);
 
-const MaxLex = 55; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
+const MaxLex = 56; Max_Items = 8190; {Константы максимального размера массива и колво лексем}
       MainLex: array[ident] of str15= {Константы буквенных обозначений лексем}
       ('', '', ';', 'var', ',', ':', 'int', '{', '}',
       'write', 'if', '(', ')', '', '', 'string', '=', 'bool',
       '==', '>', '<', '>=', '<=', '!=', 'not', 'and', 'or', 'then', 'for', 'do',
       'else', 'to', 'while', 'read', '[', ']', 'array', '+', '-', '*',
       '//', '%', 'char', 'float', '/', '', 'writeln', 'func', 'return', 'uses', '', 'import', '', 'Texture2D',
-      'struct', '');
+      'struct', '.', '');
 
 {ТИПЫ}
 Type
@@ -78,7 +78,7 @@ Type
                typeElem: ident;
                case Typ:ident of
                  cmOper: (op: ident; left, right: pTree);
-                 cmVar: (index: integer; num, numj: pTree);
+                 cmVar: (index: pIndex; num, numj: pTree);
                  cmConst: (Value: tValue);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
              end;
@@ -90,10 +90,10 @@ Type
                case Type_:ident of
                  cmIF:(op: pTree; Then_, Else_: pNode);
                  cmWrite:(tree: pTree);
-                 cmIdent:(treeVar, treeIndex, treeIndexj: pTree; index: integer);
-                 cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: integer;);
+                 cmIdent:(treeVar, treeIndex, treeIndexj: pTree; index: pIndex);
+                 cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: pIndex;);
                  cmWhile: (opWhile: pTree; doWhile_: pNode);
-                 cmRead: (indexRead: integer; indexArrayRead: pTree);
+                 cmRead: (indexRead: pIndex; indexArrayRead: pTree);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
                  cmReturn: (return: pTree);
              end;
