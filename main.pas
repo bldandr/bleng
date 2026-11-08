@@ -153,7 +153,7 @@ end;
 
 {Функция, которая возвращает значение переменной по индеку}
 function GetValueVarForIndex(index: pIndex):pValue;
-var IndexN: integer; val: pValue;
+var IndexN: integer; val: pValue; indexI, indexJ: tValue;
 begin
   IndexN := index^.index;
 
@@ -164,6 +164,14 @@ begin
   begin
     index := index^.next;
     val := @pVarArray(val^.k^.data)^[index^.index];
+  end;
+
+  if val^.type_ = cmArray then
+  begin
+    index := index^.next;
+    EvalTree(Index^.TreeIndex, IndexI);
+
+    val := @pVarArray(val^.a^.data)^[IndexI.i];
   end;
 
   GetValueVarForIndex := val;
@@ -655,6 +663,31 @@ begin
     tzList^.index := i;
   end;
 
+  if tz^.type_ in [cmArray, cmMatrix] then 
+  begin
+    ch := GetLex;
+    if ch = cmKSO then ch := GetLex
+    else Error('Требуется [!');
+    
+    new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
+
+    tzList^.TreeIndex := orExpr;
+
+    if ch <> cmKSC then Error('Требуется ]!');
+
+    if tz^.type_ = cmMatrix then
+    begin
+      ch := GetLex;
+
+      if ch = cmKSO then ch := GetLex
+      else Error('Требуется ]!');
+
+      new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
+    
+      tzList^.TreeIndex := orExpr;
+    end;
+  end;
+
   BuildIndexList := ListIndex;
 end;
 
@@ -692,7 +725,7 @@ end;
 
 {Функция, которая по списку индексов отдает тип переменной}
 function GetTypeVar(index: pIndex):ident;
-var i: integer; vars: pVars;
+var i: integer; vars: pVars; RealType: ident;
 begin
   vars := GetPointerFotListNameVar(index^.index);
 
@@ -703,8 +736,12 @@ begin
 
     for i := 1 to index^.index-1 do vars := vars^.next;
   end;
+
+  RealType := vars^.type_;
+
+  if vars^.type_ in [cmArray, cmMatrix] then RealType := vars^.typeArray;
   
-  GetTypeVar := vars^.type_;
+  GetTypeVar := RealType;
 end;
 
 
@@ -1706,9 +1743,7 @@ begin
   {Получаем указатель на переменную}
   timeVar := GetValueVarForIndex(p^.index);
 
-  if ((timeVar^.Type_ = val.Type_) or SoulTypes(timeVar^.Type_, val.Type_)) then
-    timeVar^ := val
-  else Error('Несоответствие типов.')
+  timeVar^ := val
 end;
 
 {Интерпретация for}

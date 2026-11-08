@@ -137,8 +137,10 @@ Type
      {Тип описания индексов переменных}
      tIndex = record
                 index: integer;
+                TreeIndex: pTree;
                 next: pIndex;
               end;
+    {6 байт}
 
     {Типы для приведения нетипизированных указателей и указатели на них}
      pVarArray = ^tVarArray;
