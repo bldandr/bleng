@@ -78,7 +78,7 @@ Type
                typeElem: ident;
                case Typ:ident of
                  cmOper: (op: ident; left, right: pTree);
-                 cmVar: (index: pIndex; num, numj: pTree);
+                 cmVar: (index: pIndex);
                  cmConst: (Value: tValue);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
              end;

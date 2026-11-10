@@ -174,6 +174,8 @@ begin
     val := @pVarArray(val^.a^.data)^[IndexI.i];
   end;
 
+  if val^.type_ = cmVar then val := val^.v;
+
   GetValueVarForIndex := val;
 end;
 
@@ -1106,15 +1108,12 @@ begin
         if tz^.type_ = cmVar then
         begin
           {Определяем индекс переменной, создаем собственноручно инициализированный элемент дерева для удобства}
-          iVar := GetIndex(lex);
           new(pTreeArray(Last^.vars)^[i]);
-          pTreeArray(Last^.vars)^[i]^.typ := cmConst;
-          pTreeArray(Last^.vars)^[i]^.Value.Type_ := cmInt;
-          pTreeArray(Last^.vars)^[i]^.value.i := iVar;
+          pTreeArray(Last^.vars)^[i]^.typ := cmVar;
+          pTreeArray(Last^.vars)^[i]^.index := BuildIndexList;
 
           {Берем указатель на пзвено названий списка переменных и сверяем типы}
-          timeVar := GetPointerForNameVar(iVar);
-          if timeVar^.type_ <> tz^.typeArray then Error('Несоответствие типов!');
+          if GetTypeVar(pTreeArray(Last^.vars)^[i]^.index) <> tz^.typeArray then Error('Несоответствие типов!');
           ch := GetLex;
         end
         {Если параметр обычный -}
@@ -1924,14 +1923,14 @@ begin
       if tz^.Type_ = cmVar then
       begin
         {Определяем индекс переменной}
-        EvalTree(pTreeArray(vars)^[i], vr);
+        {EvalTree(pTreeArray(vars)^[i], vr);}
 
         {переходим к следущему элементу стека, чтоб верно определился адрес переменной}
         timeStack := stack;
         stack := stack^.next;
 
         {Присваиваем параметру адрес переменной}
-        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(pIndex(vr.v));
+        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(pTreeArray(vars)^[i]^.index);
 
         {Возвращаем стек}
         stack := timeStack;
