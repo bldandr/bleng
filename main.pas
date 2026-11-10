@@ -153,7 +153,7 @@ end;
 
 {Функция, которая возвращает значение переменной по индеку}
 function GetValueVarForIndex(index: pIndex):pValue;
-var IndexN: integer; val: pValue; indexI, indexJ: tValue;
+var IndexN: integer; val: pValue; indexI, indexJ: tValue; type_ : ident;
 begin
   IndexN := index^.index;
 
@@ -171,7 +171,21 @@ begin
     index := index^.next;
     EvalTree(Index^.TreeIndex, IndexI);
 
+    type_ := val^.a^.type_;
     val := @pVarArray(val^.a^.data)^[IndexI.i];
+    val^.type_ := type_;
+  end;
+
+  if val^.type_ = cmMatrix then 
+  begin
+    index := index^.next;
+    EvalTree(index^.TreeIndex, indexI);
+    index := index^.next;
+    EvalTree(index^.TreeIndex, indexJ);
+
+    type_ := val^.m^.type_;
+    val := @pVarArray(val^.m^.data)^[indexI.i*val^.m^.sizei + IndexJ.i];
+    val^.type_ := type_;
   end;
 
   if val^.type_ = cmVar then val := val^.v;
@@ -686,7 +700,7 @@ begin
 
       new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
     
-      tzList^.TreeIndexJ := orExpr;
+      tzList^.TreeIndex := orExpr;
     end;
   end;
 
@@ -1591,7 +1605,8 @@ begin
   end;
 
   {Проверяем соответствие типов}
-  if L.Type_ <> R.Type_ then Error('Несоответствие типов!');
+  if L.Type_ <> R.Type_ then 
+    Error('Несоответствие типов|');
 
   {Проверяем на сравнения}
   if op in [cmOpM, cmOpB, cmOpSr, cmOpBR, CmOpMR, cmOpNR] then
@@ -2021,7 +2036,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'bfs.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
