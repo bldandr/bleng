@@ -137,7 +137,7 @@ Type
      {Тип описания индексов переменных}
      tIndex = record
                 index: integer;
-                TreeIndex: pTree;
+                TreeIndex, TreeIndexJ: pTree;
                 next: pIndex;
               end;
     {6 байт}

@@ -684,7 +684,7 @@ begin
 
       new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
     
-      tzList^.TreeIndex := orExpr;
+      tzList^.TreeIndexJ := orExpr;
     end;
   end;
 
@@ -739,7 +739,7 @@ begin
 
   RealType := vars^.type_;
 
-  if vars^.type_ in [cmArray, cmMatrix] then RealType := vars^.typeArray;
+  if vars^.type_ in [cmArray, cmMatrix, cmVar] then RealType := vars^.typeArray;
   
   GetTypeVar := RealType;
 end;
