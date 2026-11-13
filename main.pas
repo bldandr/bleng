@@ -160,35 +160,37 @@ begin
   if indexN < 0 then val := @pVarArray(var_)^[abs(indexN)]
   else val := @pVarArray(stack^.var_)^[indexN];
 
-  if val^.type_ = cmCustom then
+  while not (val^.type_ in types) do
   begin
-    index := index^.next;
-    val := @pVarArray(val^.k^.data)^[index^.index];
+    case val^.type_ of
+      cmCustom:
+      begin
+        index := index^.next;
+        val := @pVarArray(val^.k^.data)^[index^.index];
+      end;
+      cmArray:
+      begin
+        index := index^.next;
+        EvalTree(Index^.TreeIndex, IndexI);
+
+        type_ := val^.a^.type_;
+        val := @pVarArray(val^.a^.data)^[IndexI.i];
+        val^.type_ := type_;
+      end;
+      cmMatrix: 
+      begin
+        index := index^.next;
+        EvalTree(index^.TreeIndex, indexI);
+        index := index^.next;
+        EvalTree(index^.TreeIndex, indexJ);
+
+        type_ := val^.m^.type_;
+        val := @pVarArray(val^.m^.data)^[indexI.i*val^.m^.sizei + IndexJ.i];
+        val^.type_ := type_;
+      end;
+      cmVar: val := val^.v;
+    end;
   end;
-
-  if val^.type_ = cmArray then
-  begin
-    index := index^.next;
-    EvalTree(Index^.TreeIndex, IndexI);
-
-    type_ := val^.a^.type_;
-    val := @pVarArray(val^.a^.data)^[IndexI.i];
-    val^.type_ := type_;
-  end;
-
-  if val^.type_ = cmMatrix then 
-  begin
-    index := index^.next;
-    EvalTree(index^.TreeIndex, indexI);
-    index := index^.next;
-    EvalTree(index^.TreeIndex, indexJ);
-
-    type_ := val^.m^.type_;
-    val := @pVarArray(val^.m^.data)^[indexI.i*val^.m^.sizei + IndexJ.i];
-    val^.type_ := type_;
-  end;
-
-  if val^.type_ = cmVar then val := val^.v;
 
   GetValueVarForIndex := val;
 end;
@@ -401,6 +403,7 @@ end;
 procedure SectionStruct;
 var tz: pTypes; tzVars: pVars;
     type_: ident;
+    index_custom_type_: pTypes;
 begin
   {Перебираем до конца списка типов и создаем его}
   if ListTypes = nil then
@@ -412,7 +415,7 @@ begin
     tz := ListTypes;
     while tz^.next <> nil do tz := tz^.next;
 
-    new(tz); tz^.next := nil;
+    new(tz^.next); tz := tz^.next; tz^.next := nil;
   end;
 
   tz^.countVar := 0;
@@ -430,7 +433,7 @@ begin
   tz^.vars := nil;
 
   {Обработка типов с именами}
-  while ch in types do
+  while (ch in types) or (IsType(lex)) do
   begin
     if tz^.vars = nil then
     begin
@@ -442,6 +445,9 @@ begin
     end;
 
     type_ := ch;
+    if not(type_ in types) then index_custom_type_ := GetIndexType(lex)
+    else index_custom_type_ := nil;
+    if type_ = cmIdent then type_ := cmCustom; 
     
     ch := GetLex;
     while ch = cmIdent do
@@ -449,6 +455,7 @@ begin
       tzVars^.type_ := type_;
       tzVars^.name := lex;
       inc(tz^.countVar);
+      tzVars^.index_custom_type_ := index_custom_type_;
 
       {Обрабатываем запятые. если запятая, то создаем новый элемент в списке элементов}
       ch := GetLex;
@@ -483,6 +490,33 @@ begin
 
     vars := vars^.next; inc(i);
   end; 
+end;
+
+{Процедура, которая выделяет память под кастомные элементы}
+Function GetMemForCustomElements(index_custom_type_: pTypes):tValue;
+var custom: tValue; i: integer; vars: pVars;
+begin
+  new(custom.k);
+  custom.type_ := cmCustom;
+  custom.k^.type_ := cmCustom;
+  GetMem(custom.k^.data, index_custom_type_^.countVar*sizeof(tValue));
+  custom.k^.index := index_custom_type_; 
+
+  InitCustomElements(custom.k^.data, index_custom_type_);
+
+  vars := index_custom_type_^.vars;
+
+  for i := 1 to index_custom_type_^.countVar do
+  begin
+    if pVarArray(custom.k^.data)^[i].type_ = cmCustom then
+    begin
+      pVarArray(custom.k^.data)^[i] := GetMemForCustomElements(vars^.index_custom_type_);
+    end;
+
+    vars := vars^.next;
+  end;
+
+  GetMemForCustomElements := custom;
 end;
 
 {Процедура обработки объявления глобальных переменных}
@@ -574,7 +608,7 @@ begin
     {Обработчик, если вдруг следущая лексема - это тип, то создаем элемент в списке названий глоабльных переменных и 
     увеличиваем количество глобальных переменных}
     ch := GetLex;
-    if ch in types then
+    if (ch in types) or (IsType(lex)) then
     begin
       new(tz^.next); tz := tz^.next; tz^.next := nil; inc(numNames);
     end; 
@@ -632,15 +666,7 @@ begin
       end
       else 
       begin
-        new(pVarArray(var_)^[i].k);
-        pVarArray(var_)^[i].type_ := cmCustom;
-        pVarArray(var_)^[i].k^.type_ := pVarArray(var_)^[i].type_;
-        GetMem(pVarArray(var_)^[i].k^.data, index_custom_type_^.countVar*sizeof(tValue));
-        InitCustomElements(pVarArray(var_)^[i].k^.data, index_custom_type_);
-
-        pVarArray(var_)^[i].k^.index := tz^.index_custom_type_;
-        
-        pVarArray(var_)^[i].type_ := cmCustom; 
+        pVarArray(var_)^[i] := GetMemForCustomElements(index_custom_type_);
 
         tz^.type_ := cmCustom;
       end;
@@ -659,48 +685,62 @@ begin
   new(ListIndex); ListIndex^.next := nil;  
   ListIndex^.index := index; tzList := ListIndex;
 
-  if tz^.type_ = cmCustom then
-  begin
-    ch := GetLex; 
-    if ch = cmT then ch := GetLex
-    else Error('Требуется точка!'); 
-
-    new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
-
-    tzVars := tz^.index_custom_type_^.vars;
-
-    i := 1;
-
-    while (tzVars <> nil) and (tzVars^.name <> lex) do 
+  while not (tz^.type_ in types) do
+  begin 
+    if tz^.type_ = cmCustom then
     begin
-      tzVars := tzVars^.next; inc(i);
-    end;
-
-    tzList^.index := i;
-  end;
-
-  if tz^.type_ in [cmArray, cmMatrix] then 
-  begin
-    ch := GetLex;
-    if ch = cmKSO then ch := GetLex
-    else Error('Требуется [!');
-    
-    new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
-
-    tzList^.TreeIndex := orExpr;
-
-    if ch <> cmKSC then Error('Требуется ]!');
-
-    if tz^.type_ = cmMatrix then
-    begin
-      ch := GetLex;
-
-      if ch = cmKSO then ch := GetLex
-      else Error('Требуется ]!');
+      ch := GetLex; 
+      if ch = cmT then ch := GetLex
+      else Error('Требуется точка!'); 
 
       new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
-    
+
+      tzVars := tz^.index_custom_type_^.vars;
+
+      i := 1;
+
+      while (tzVars <> nil) and (tzVars^.name <> lex) do 
+      begin
+        tzVars := tzVars^.next; inc(i);
+      end;
+
+      tz := tzVars;
+
+      tzList^.index := i;
+    end;
+
+    if tz^.type_ in [cmArray, cmMatrix] then 
+    begin
+      ch := GetLex;
+      if ch = cmKSO then ch := GetLex
+      else Error('Требуется [!');
+      
+      new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;   
+
       tzList^.TreeIndex := orExpr;
+
+      if ch <> cmKSC then Error('Требуется ]!');
+
+      if tz^.type_ = cmMatrix then
+      begin
+        ch := GetLex;
+
+        if ch = cmKSO then ch := GetLex
+        else Error('Требуется ]!');
+
+        new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
+      
+        tzList^.TreeIndex := orExpr;
+      end;
+
+      new(tzVars); tzVars^ := tz^; tzVars^.type_ := tz^.typeArray; tz := tzVars;   
+    end;
+
+    if tz^.type_ = cmVar then 
+    begin
+      new(tzVars); tzVars^ := tz^; tzVars^.type_ := tz^.typeArray; tz := tzVars;  
+
+      tz^.type_ := tz^.typeArray;
     end;
   end;
 
@@ -2036,7 +2076,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'bfs.b')
+  if ParamCount = 0 then assign(f, 'main.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
@@ -2045,7 +2085,8 @@ begin
   ch := GetLex;
   if ch = cmImport then ImportFile;
 
-  if ch in [cmStruct] then SectionStruct;
+  while ch in [cmStruct] do 
+    SectionStruct;
 
   if (ch in types) or (IsType(lex)) then 
     SectionVar; {Если дальше идет раздел var - вызываем его}
