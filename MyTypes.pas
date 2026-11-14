@@ -35,9 +35,6 @@ Type
     pIndex = ^tIndex;
     pTypes = ^tTypes;
 
-    {Указатель на функцию модуля}
-     pFunction=  function(var_: pointer):pValue;
-
      {Тип, хранящий информацию о массивах}
      tArrayInfo = record 
                     data: pointer;
@@ -72,6 +69,10 @@ Type
                   cmVar: (v: pValue);
                   cmCustom: (k: pCustomInfo);
               end;
+
+
+    {Указатель на функцию модуля}
+     pFunction=  function(var_: pointer):tValue;
      
      {Тип дерева операций}
      tTree = record

@@ -32,7 +32,7 @@ const
 var varsmod: tIdentArray;
 
 {Процедура инициализации RayLib. Параметры: Width, Height: integer; Name: string}
-Function InitGraph(var_: pointer):pValue;
+Function InitGraph(var_: pointer):tValue;
 var Wight, Height: longint; Name_: string;
 begin
   Wight := pVarArray(var_)^[1].i;
@@ -41,41 +41,33 @@ begin
 
   InitWindow(Wight, Height, PChar(Name_)); //PChar(Name_)
   SetTargetFPS(60);
-
-  InitGraph := nil;
 end;
 
 {Функция проверки закрытия окна.}
-Function WindowNotClose(var_: pointer):pValue;
-var res: pValue;
+Function WindowNotClose(var_: pointer):tValue;
+var res: tValue;
 begin
-  new(res);
-
-  res^.type_ := cmBool;
-  res^.b := not WindowShouldClose;
+  res.type_ := cmBool;
+  res.b := not WindowShouldClose;
 
   WindowNotClose := res;
 end;
 
 
 {Функция BeginDrawing}
-Function BegDraw(var_: pointer):pValue;
+Function BegDraw(var_: pointer):tValue;
 begin
   BeginDrawing;
-
-  BegDraw := nil;
 end;
 
 {Функция EndDrawing}
-Function EndDraw(var_: pointer):pValue;
+Function EndDraw(var_: pointer):tValue;
 begin
   EndDrawing;
-
-  EndDraw := nil;
 end;
 
 {Функция рисования квадратов}
-Function DrawRectangleMod(var_: pointer):pValue;
+Function DrawRectangleMod(var_: pointer):tValue;
 var x, y, width, height, COLOR: integer;
 begin
   x := pVarArray(var_)^[1].i;
@@ -85,12 +77,10 @@ begin
   COLOR := pVarArray(var_)^[5].i;
 
   DrawRectangle(x, y, width, height, COLORS[COLOR]);
-
-  DrawRectangleMod := nil;
 end;
 
 {Функция рисования пикселя}
-Function DrawPixelMod(var_: pointer):pValue;
+Function DrawPixelMod(var_: pointer):tValue;
 var x, y, COLOR: integer;
 begin
   x := pVarArray(var_)^[1].i;
@@ -99,11 +89,10 @@ begin
 
   DrawPixel(x, y, COLORS[COLOR]);
 
-  DrawPixelMod := nil;
 end;
 
 {Функция рисования линии}
-Function DrawLineMod(var_: pointer):pValue;
+Function DrawLineMod(var_: pointer):tValue;
 var startX, startY, endX, endY, COLOR: integer;
 begin
   startX := pVarArray(var_)^[1].i;
@@ -113,12 +102,10 @@ begin
   COLOR := pVarArray(var_)^[5].i;
 
   DrawLine(startX, startY, endX, endY, COLORS[COLOR]);
-
-  DrawLineMod := nil;
 end;
 
 {Функция рисования круга}
-Function DrawCircleMod(var_: pointer):pValue;
+Function DrawCircleMod(var_: pointer):tValue;
 var centerX, centerY, radius, COLOR: integer;
 begin
   centerX := pVarArray(var_)^[1].i;
@@ -127,13 +114,11 @@ begin
   COLOR := pVarArray(var_)^[4].i;
 
   DrawCircle(centerX, centerY, radius, COLORS[COLOR]);
-
-  DrawCircleMod := nil;
 end;
 
 
 {Процедура рисования текста}
-Function DrawTextMod(var_: pointer):pValue;
+Function DrawTextMod(var_: pointer):tValue;
 var Text: string; x, y, fontSize, color: integer;
 begin
   case pVarArray(var_)^[1].Type_ of
@@ -147,46 +132,42 @@ begin
   color := pVarArray(var_)^[5].i;
 
   DrawText(PChar(Text), x, y, fontSize, COLORS[color]);
-
-  DrawTextMod := nil;
 end;
 
 {Процедура закраски фона}
-Function ClearBackgroundMod(var_: pointer):pValue;
+Function ClearBackgroundMod(var_: pointer):tValue;
 var color: integer;
 begin
   color := pVarArray(var_)^[1].i;
 
   ClearBackground(COLORS[color]);
-
-  ClearBackgroundMod := nil;
 end;
 
 
 {Процедура IsKeyDown}
-Function IsKeyDownMod(var_: pointer):pValue;
-var key: integer; res: pValue;
+Function IsKeyDownMod(var_: pointer):tValue;
+var key: integer; res: tValue;
 begin
   key := pVarArray(var_)^[1].i;
 
-  new(res); res^.type_ := cmBool; res^.b := IsKeyDown(key);
+  res.type_ := cmBool; res.b := IsKeyDown(key);
 
   IsKeyDownMod := res;
 end;
 
 {Процедура IsKeyPressed}
-Function IsKeyPressedMod(var_: pointer):pValue;
-var key: integer; res: pValue;
+Function IsKeyPressedMod(var_: pointer):tValue;
+var key: integer; res: tValue;
 begin
   key := pVarArray(var_)^[1].i;
 
-  new(res); res^.type_ := cmBool; res^.b := IsKeyPressed(key);
+  res.type_ := cmBool; res.b := IsKeyPressed(key);
 
   IsKeyPressedMod := res;
 end;
 
 {Функция рисования овала}
-Function DrawEllipseMod(var_: pointer):pValue;
+Function DrawEllipseMod(var_: pointer):tValue;
 var centerX, centerY, radiusH, radiusV, color: integer;
 begin
   centerX := pVarArray(var_)^[1].i;
@@ -196,82 +177,72 @@ begin
   color := pVarArray(var_)^[5].i;
 
   DrawEllipse(centerX, centerY, radiusH, radiusV, COLORS[color]);
-
-  DrawEllipseMod := nil;
 end;
 
 {Функция IsMouseButtonDown}
-Function IsMouseButtonDownMod(var_: pointer):pValue;
-var button: integer; res: pValue;
+Function IsMouseButtonDownMod(var_: pointer):tValue;
+var button: integer; res: tValue;
 begin
   button := pVarArray(var_)^[1].i;
 
-  new(res);
-
-  res^.type_ := cmBool;
-  res^.b := IsMouseButtonDown(button);
+  res.type_ := cmBool;
+  res.b := IsMouseButtonDown(button);
 
   IsMouseButtonDownMod := res;
 end;
 
 {Функция GetMouseX}
-Function GetMouseXMod(var_: pointer):pValue;
-var res: pValue;
+Function GetMouseXMod(var_: pointer):tValue;
+var res: tValue;
 begin
-  new(res);
 
-  res^.type_ := cmInt;
-  res^.i := GetMouseX;
+  res.type_ := cmInt;
+  res.i := GetMouseX;
 
   GetMouseXMod := res;
 end;
 
 {Функция GetMouseY}
-Function GetMouseYMod(var_: pointer):pValue;
-var res: pValue;
+Function GetMouseYMod(var_: pointer):tValue;
+var res: tValue;
 begin
-  new(res);
-
-  res^.type_ := cmInt;
-  res^.i := GetMouseY;
+  res.type_ := cmInt;
+  res.i := GetMouseY;
 
   GetMouseYMod := res;
 end;
 
 {Функция IsMouseButtonPressed}
-Function IsMouseButtonPressedMod(var_:pointer):pValue;
-var res: pValue; button: integer;
+Function IsMouseButtonPressedMod(var_:pointer):tValue;
+var res: tValue; button: integer;
 begin
   button := pVarArray(var_)^[1].i;
 
-  new(res);
-  res^.type_ := cmBool;
-
-  res^.b := IsMouseButtonPressed(button);
+  res.type_ := cmBool;
+  res.b := IsMouseButtonPressed(button);
 
   IsMouseButtonPressedMod := res;
 end;
 
 {Функция LoadTexture}
-Function LoadTextureMod(var_:pointer):pValue;
-var name: string; res: pValue;
+Function LoadTextureMod(var_:pointer):tValue;
+var name: string; res: tValue;
 begin
   name := pString(pVarArray(var_)^[1].s)^;
 
-  new(res);
-  res^.type_ := cmCustom;
-  new(res^.k);
+  res.type_ := cmCustom;
+  new(res.k);
 
-  res^.k^.type_ := cmTexture2D;
-  GetMem(res^.k^.data, sizeof(TTexture));
+  res.k^.type_ := cmTexture2D;
+  GetMem(res.k^.data, sizeof(TTexture));
 
-  TTexture(res^.k^.data^) := LoadTexture(PChar(name));
+  TTexture(res.k^.data^) := LoadTexture(PChar(name));
 
   LoadTextureMod := res;
 end;
 
 {Функция DrawTexture}
-Function DrawTextureMod(var_:pointer):pValue;
+Function DrawTextureMod(var_:pointer):tValue;
 var texture: TTexture; x, y: integer;
 begin
   texture := TTexture(pVarArray(var_)^[1].k^.data^);
@@ -279,8 +250,6 @@ begin
   y := pVarArray(var_)^[3].i;
 
   DrawTexture(texture, x, y, WHITE);
-
-  DrawTextureMod := nil;
 end;
 
 

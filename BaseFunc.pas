@@ -9,62 +9,60 @@ implementation
 var varsmod: tIdentArray;
 
 {Функция обработки random. Параметры: number: integer}
-function RandomMod(var_: pointer):pValue;
-var min, max: tValue; pResult: pValue;
+function RandomMod(var_: pointer):tValue;
+var min, max, Result: tValue;
 begin
   min := pVarArray(var_)^[1];
   max := pVarArray(var_)^[2];
 
-  new(pResult); 
-  pResult^.type_ := cmInt;
-  pResult^.i := min.i + random(max.i-min.i + 1);
+  Result.type_ := cmInt;
+  Result.i := min.i + random(max.i-min.i + 1);
 
-  RandomMod := pResult;
+  RandomMod := Result;
 end;
 
 {Функция обработки sqrt. Параметры: number: integer/real}
-Function SqrtMod(var_: pointer):pValue;
-var numb: tValue; res: pValue;
+Function SqrtMod(var_: pointer):tValue;
+var numb, res: tValue;
 begin
   numb := pVarArray(var_)^[1];
 
-  New(res); res^.type_ := cmFloat;
+  res.type_ := cmFloat;
   case numb.type_ of
-    cmInt: res^.f := sqrt(numb.i);
-    cmFloat: res^.f := sqrt(numb.f);
+    cmInt: res.f := sqrt(numb.i);
+    cmFloat: res.f := sqrt(numb.f);
   end;
 
   SqrtMod := res;
 end;
 
 {Функция обработки trunc}
-Function TruncMod(var_: pointer):pValue;
-var numb: real; res: pValue; 
+Function TruncMod(var_: pointer):tValue;
+var numb: real; res: tValue; 
 begin
   numb := pVarArray(var_)^[1].f;
 
-  new(res);
-  res^.type_ := cmInt;
+  res.type_ := cmInt;
 
-  res^.i := trunc(numb);
+  res.i := trunc(numb);
 
   TruncMod := res;
 end;
 
 {Функция обработки str}
-Function StrMod(var_: pointer):pValue;
+Function StrMod(var_: pointer):tValue;
 var numb: longint;
     s: string;
     code: integer;
-    res: pValue; 
+    res: tValue; 
 begin
   numb := pVarArray(var_)^[1].i;
 
   str(numb, s);
 
-  new(res); res^.type_ := cmString;
-  GetMem(res^.s, length(s) + 1);
-  string(res^.s^) := s; 
+  res.type_ := cmString;
+  GetMem(res.s, length(s) + 1);
+  string(res.s^) := s; 
 
   StrMod := res;
 end;

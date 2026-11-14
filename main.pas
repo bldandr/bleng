@@ -27,9 +27,9 @@ Function Term: pTree; forward;
 Function Factor: pTree; forward;
 Function Operator:pNode; forward;
 Procedure EvalTree(p: pTree; var Res: tValue); forward;
-Function Interpretator(p: pNode):pValue; forward;
+Function Interpretator(p: pNode):tValue; forward;
 procedure CommandFunc(var Last: pNode; index: pFunc); forward;
-Function InterFunc(p: pFunc; vars: pointer):pValue; forward;
+Function InterFunc(p: pFunc; vars: pointer):tValue; forward;
 procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
 
 {Процедура вывода ошибки}
@@ -1744,7 +1744,6 @@ end;
 {Функция для обхода дерева и получения результата в следствии}
 Procedure EvalTree(p: pTree; var Res: tValue);
 var ResL, ResR: tValue;
-    pRes: pValue;
 begin
   if p <> nil then
   begin
@@ -1758,14 +1757,7 @@ begin
            case p^.Typ of                {переменную/константу}
              cmConst: Res := p^.value; {Конст - просто отдаем значение}
              cmVar: res := GetValueVarForIndex(p^.index)^; {Идентефикатор - возвращаем значение переменной}
-             cmFunc:
-             begin {Функция - интерпретируем функцию и возвращаем значение}
-               new(pRes);
-               pRes := InterFunc(p^.indexFunc, p^.vars);
-               Res := pRes^;
-
-               dispose(pRes);            
-             end;           
+             cmFunc: Res := InterFunc(p^.indexFunc, p^.vars);           
            end;
          end;
   end;
@@ -1799,7 +1791,7 @@ begin
 end;
 
 {Интерпретация for}
-Function InterFor(pFor: pNode):pValue;
+Function InterFor(pFor: pNode):tValue;
 var val: tValue;
     timeVar: ^tValue;
 begin
@@ -1827,7 +1819,7 @@ begin
 end;
 
 {Процедура интерпретации цикла while}
-Function InterWhile(p: pNode):pValue;
+Function InterWhile(p: pNode):tValue;
 var val: tValue;
 begin
   {Получаем значение условия}
@@ -1875,7 +1867,7 @@ end;
 
 
 {Процедура интерпретации оператора ветвления}
-Function InterIf(p: pNode):pValue;
+Function InterIf(p: pNode):tValue;
 var val: tValue;
 begin
   {Получаем значение условия. Если верно - выполняем тело then, иначе - else}
@@ -1885,14 +1877,13 @@ begin
 end;
 
 {Функция интерпретации команды return}
-function InterReturn(p:pNode):pValue;
-var pVal: pValue;
+function InterReturn(p:pNode):tValue;
+var Val: tValue;
 begin
   {Создаем звено возврата, получаем сам возврат и возвращаем его}
-  new(pVal);
-  EvalTree(p^.return, pval^);
+  EvalTree(p^.return, val);
 
-  InterReturn := pval;
+  InterReturn := val;
 end;
 
 
@@ -1937,11 +1928,11 @@ begin
 end;
 
 {Обработка команды функций}
-Function InterFunc(p: pFunc; vars: pointer):pValue;
+Function InterFunc(p: pFunc; vars: pointer):tValue;
 var timeStack: pStack;
     i, numb: integer;
     vr: tValue;
-    tz: pVars; res: pValue;
+    tz: pVars; res: tValue;
 begin
   {Создаем новый элемент в стеке}
   new(timeStack); timeStack^.next := stack; stack := timeStack;
@@ -2019,7 +2010,7 @@ begin
 end;
 
 {Процедура, которая проходит по AST и вызыввет соответствующие функции в нем}
-Function Interpretator(p: pNode):pValue;
+Function Interpretator(p: pNode):tValue;
 begin
   while p <> nil do
   begin
