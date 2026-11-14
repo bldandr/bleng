@@ -8,3 +8,4 @@ test
 !/examples/**/*.b
 *.png
 plan.md
+*.log
