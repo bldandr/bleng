@@ -1995,7 +1995,6 @@ begin
         else Error('Ошибка интерпретатора: nil stack');
         EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
         stack := timeStack;
-        writeln('Тут ошибка не дошла');
       end;
     end;
 
