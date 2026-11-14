@@ -1417,9 +1417,6 @@ begin
     {Если лексема main, то берем первую иницализированную переменную + присваиваем ей имя, а иначе создаем новую функцию в списке и присваиваем ей имя}
     ch := GetLex;
 
-    {Проверка уникальности идентефикатора}
-    CheckIdent(lex);
-
     if lex = 'main' then
     begin
       Last := main;
@@ -1553,6 +1550,8 @@ begin
 
   ch := GetLex;
 
+  if func = nil then Error('Ошибка bleng: пустой указатель func в функции CommandCreateVar.');
+
   {проверяем на то, есть ли уже переменные в функции. если есть - добираемся
   до их конца, а если нет - создаем}
   if Func^.vars = nil then
@@ -1574,7 +1573,6 @@ begin
     if ch = cmIdent then {Если имя - запомнить}
     begin
       {Инициализировать идентефикатор}
-      CheckIdent(lex);
       tz^.name := lex; tz^.type_ := type_; tz^.next := nil;
       tz^.typeArray := typeArray;
       inc(Func^.count);
@@ -1977,9 +1975,6 @@ begin
       {Если var-параметр, то}
       if tz^.Type_ = cmVar then
       begin
-        {Определяем индекс переменной}
-        {EvalTree(pTreeArray(vars)^[i], vr);}
-
         {переходим к следущему элементу стека, чтоб верно определился адрес переменной}
         timeStack := stack;
         stack := stack^.next;
@@ -1989,13 +1984,6 @@ begin
 
         {Возвращаем стек}
         stack := timeStack;
-
-        {Если вдруг наша переменная - тоже var, то идем по ее ссылке и присваиваем ее}
-        if vr.i > 0 then 
-        begin
-          if pVarArray(stack^.next^.var_)^[vr.i].type_ = cmVar then
-            pVarArray(Stack^.var_)^[i].v := pVarArray(stack^.next^.var_)^[vr.i].v;
-        end;
       end
       {Если наша переменная - это все таки не var-параметр, то}
       else
@@ -2003,9 +1991,11 @@ begin
         {Откатываемся в стеке назад(ибо не будет корректно работать EvalTree т.к. новый стек содержит бесполеный мусор) и присваиваем к нашему мусору
         нужное значение}
         timeStack := stack;
-        stack := stack^.next;
+        if stack^.next <> nil then stack := stack^.next
+        else Error('Ошибка интерпретатора: nil stack');
         EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
-        stack := timeStack
+        stack := timeStack;
+        writeln('Тут ошибка не дошла');
       end;
     end;
 
@@ -2076,7 +2066,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'krolik.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
