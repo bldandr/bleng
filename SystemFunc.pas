@@ -10,6 +10,7 @@ Procedure DisposeFunc(tz: pFunc);
 procedure DisposeVars(tz: pVars);
 procedure DisposeAstTree(tz: pNode);
 Procedure DisposeIndex(tz: pIndex);
+procedure DisposeVar(p: pointer; size: integer);
 
 implementation
 
@@ -59,6 +60,35 @@ begin
       new(tz^.next); tz := tz^.next;
     end;
   end; 
+end;
+
+{Зачистка переменных в памяти}
+procedure DisposeVar(p: pointer; size: integer);
+var i, sizeString: integer;
+begin
+  for i := 1 to size do
+  begin
+    {Если тип - массив, то чистим сам массив в памяи}
+    case pVarArray(p)^[i].type_ of
+      cmArray: 
+      begin
+        FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
+        dispose(pVarArray(p)^[i].a);
+      end;
+      //cmString: FreeMem(pVarArray(p)^[i].s, byte(pVarArray(p)^[i].s^)+sizeof(byte));
+      cmMatrix:
+      begin
+        GetMem(pVarArray(p)^[i].m^.data, pVarArray(p)^[i].m^.Sizei*pVarArray(p)^[i].m^.Sizej*sizeof(tValue));
+        dispose(pVarArray(p)^[i].m);
+      end;
+      cmCustom:
+      begin
+        DisposeVar(pVarArray(p)^[i].k^.data, pVarArray(p)^[i].k^.index^.countVar)
+      end;
+    end;
+  end; 
+  {Очищаем  стек переменных}
+  FreeMem(p, size*sizeof(tValue));
 end;
 
 {Процедура затирания дерева}
