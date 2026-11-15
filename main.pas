@@ -31,6 +31,7 @@ Function Interpretator(p: pNode):tValue; forward;
 procedure CommandFunc(var Last: pNode; index: pFunc); forward;
 Function InterFunc(p: pFunc; vars: pointer):tValue; forward;
 procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
+procedure CommandCreateVar(var Last: pNode); forward;
 
 {Процедура вывода ошибки}
 Procedure Error(err: string);
@@ -1248,6 +1249,12 @@ begin
     tz := tz^.next;
   end;
 
+  if IsType(lex) then
+  begin
+    CommandCreateVar(Last);
+    exit;
+  end;
+
   Error('Нет такого идентефикатора: ' + lex);
 end;
 
@@ -1510,7 +1517,7 @@ end;
 {Обработка команды создания переменной}
 procedure CommandCreateVar(var Last: pNode);
 var tz: pVars;
-    type_, typeArray: ident;
+    type_, typeArray: ident; index_custom_type_: pTypes;
 begin
   {Добавляем новый элемент в цепочке команд и сохраняем тип}
   AddElem(Last, NewElem(cmVar));
@@ -1529,10 +1536,11 @@ begin
     else Error('Требуется тип!');
   end;
 
-  if ch in customTypes then 
+  if (ch in customTypes) or IsType(lex) then 
   begin
     typeArray := ch;
     type_ := cmCustom;
+    if typeArray = cmIdent then index_custom_type_ := GetIndexType(lex);
   end;
 
   ch := GetLex;
@@ -1563,6 +1571,7 @@ begin
       tz^.name := lex; tz^.type_ := type_; tz^.next := nil;
       tz^.typeArray := typeArray;
       inc(Func^.count);
+      tz^.index_custom_type_ := index_custom_type_;
     end;
     Ch := GetLex;
     if not(Ch in [cmZP, cmTZ]) then Error('Требуется ":"!'){Если не , :}
@@ -1588,10 +1597,10 @@ begin
       cmWrite, cmWriteLn: CommandWrite(Last);
       cmIf: OperatorIf(Last);
       cmFor: OperatorFor(Last);
+      cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO,cmTexture2D: CommandCreateVar(Last);
       cmIdent: CommandIdent(Last);
       cmWhile: OperatorWhile(Last);
       cmRead: CommandRead(Last);
-      cmInt,cmFloat,cmChar,cmString,cmBool,cmKSO,cmTexture2D: CommandCreateVar(Last);
       cmReturn: CommandReturn(Last);
       cmElse: Error('Ошибка в операторе!');
     end;
@@ -1908,6 +1917,8 @@ begin
       pVarArray(stack^.var_)^[i].a^.Type_ := tz^.typeArray;
       pVarArray(stack^.var_)^[i].a^.size := tz^.max_size;
     end;
+    if tz^.type_ = cmCustom then
+      pVarArray(stack^.var_)^[i] := GetMemForCustomElements(tz^.index_custom_type_);
 
     {Если еще и параметров больше, чем переменных, которые мы просмотрели, то это значит, что данная переменная - параметр}
     if p^.performans >= i then
