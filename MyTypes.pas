@@ -91,10 +91,10 @@ Type
                case Type_:ident of
                  cmIF:(op: pTree; Then_, Else_: pNode);
                  cmWrite:(tree: pTree);
-                 cmIdent:(treeVar, treeIndex, treeIndexj: pTree; index: pIndex);
+                 cmIdent:(treeVar: pTree; index: pIndex);
                  cmFor: (varFor, opFor: pTree; do_: pNode; indexFor: pIndex;);
                  cmWhile: (opWhile: pTree; doWhile_: pNode);
-                 cmRead: (indexRead: pIndex; indexArrayRead: pTree);
+                 cmRead: (indexRead: pIndex);
                  cmFunc: (indexFunc: pFunc; vars: pointer);
                  cmReturn: (return: pTree);
              end;

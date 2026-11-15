@@ -1368,19 +1368,6 @@ begin
   if ch = cmSO then ch := GetLex
   else Error('Требуется "("!');
   if ch = cmIdent then Last^.indexRead := BuildIndexList;
-  Last^.indexArrayRead := nil;
- 
-  {если наша переменная - массив, то обрабатываем еще и индекс массива}
-  if GetType(lex) = cmArray then 
-  begin
-    ch := getLex; 
-    if ch = cmKSO then ch := GetLex
-    else Error('Требуется [!');
-
-    Last^.indexArrayRead := orExpr;
-  end; 
-
-  ch := GetLex;
 
   if ch = cmSC then ch := GetLex
   else Error('Требуется ")"!');
@@ -1726,21 +1713,6 @@ begin
   end;
 end;
 
-{Процедура затирания дерева}
-Procedure DisposeTree(var p: pTree);
-begin
-  if p <> nil then
-  begin
-    if p^.typ = cmOper then 
-    begin
-      DisposeTree(p^.right);
-      DisposeTree(p^.left);
-    end;
-
-    Dispose(p);
-  end
-end;
-
 {Функция для обхода дерева и получения результата в следствии}
 Procedure EvalTree(p: pTree; var Res: tValue);
 var ResL, ResR: tValue;
@@ -1894,14 +1866,6 @@ begin
   {Получаем переменную}
   timeVar := GetValueVarForIndex(p^.indexRead);
 
-  {Обработка переменной массива}
-  if timeVar^.type_ = cmArray then
-  begin
-    EvalTree(p^.indexArrayRead, indexArray); type_ := timeVar^.a^.type_; 
-    timeVar := pValue(@pVarArray(timeVar^.a^.data)^[indexArray.i]);
-    timeVar^.type_ := type_;
-  end;
-
   {Читаем нужный тип в зависимости от типа}
   case timeVar^.Type_ of
     cmInt: read(timeVar^.i);
@@ -2054,9 +2018,10 @@ begin
   end;
 end;
 
+
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'krolik.b')
+  if ParamCount = 0 then assign(f, 'main.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}
@@ -2080,6 +2045,11 @@ begin
 
   {Отчистка глобальных переменных}
   DisposeVar(var_, varSize);
+
+  {Отчистка функций}
+  DisposeFunc(code);
+
+  DisposeVars(VarName);
 
   close(f);
 end.
