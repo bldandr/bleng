@@ -522,9 +522,9 @@ end;
 
 {Процедура обработки объявления глобальных переменных}
 Procedure SectionVar;
-var i: integer;
+var i, j: integer;
     type_, typeArray: ident; index_custom_type_: pTypes;
-    tz: pVars;
+    tz: pVars; tempptr: pointer;
     numNames: integer;
 begin
   {Создаем новый элемент в динамическом списке названий глобальных переменных}
@@ -578,7 +578,15 @@ begin
         end;
 
         {Если дальше не идет тип, то выдаем ошибку}
-        if ch in types then typeArray := ch
+        if (ch in types) or IsType(lex) then 
+        begin
+          typeArray := ch;
+          if not (ch in types) then 
+          begin
+            typeArray := cmCustom;
+            index_custom_type_ := GetIndexType(lex);
+          end;
+        end
         else Error('Требуется тип!');
         
         {Если дальше идет идентефикаторы, то создаем новые элементы в списке глобальных имен переменных и следовательно запоминаем их}
@@ -586,7 +594,7 @@ begin
         if ch = cmIdent then 
         begin
           CheckIdent(lex);
-          tz^.name := lex; tz^.typeArray := typeArray;
+          tz^.name := lex; tz^.typeArray := typeArray; tz^.index_custom_type_ := index_custom_type_;
         end
         else Error('Требуется идентефикатор!');
 
@@ -647,9 +655,19 @@ begin
 
         pVarArray(var_)^[i].a^.Size := tz^.max_size;
 
-        pVarArray(var_)^[i].a^.Type_ := typeArray;
+        pVarArray(var_)^[i].a^.Type_ := tz^.typeArray;
+
         GetMem(pVarArray(var_)^[i].a^.data, tz^.max_size*sizeof(tValue));
         FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*sizeof(tValue), 0);
+
+
+        if tz^.typeArray = cmCustom then
+        begin
+          for j := 1 to tz^.max_size do
+          begin
+            pVarArray(pVarArray(var_)^[i].a^.data)^[j] := GetMemForCustomElements(tz^.index_custom_type_);
+          end;
+        end;
       end;
       {Для матрицы почти так же, как с массивом, но еще добавляется новый параметр размера}
       cmMatrix:
@@ -661,7 +679,7 @@ begin
         pVarArray(var_)^[i].m^.Sizei := tz^.max_size;
         pVarArray(var_)^[i].m^.Sizej := tz^.matrix_size;
 
-        pVarArray(var_)^[i].m^.Type_ := typeArray;
+        pVarArray(var_)^[i].m^.Type_ := tz^.typeArray;
         GetMem(pVarArray(var_)^[i].m^.data, tz^.max_size*tz^.matrix_size*sizeof(tValue));
         FillChar(pVarArray(var_)^[i].a^.data^, tz^.max_size*tz^.matrix_size*sizeof(tValue), 0);
       end
@@ -786,8 +804,14 @@ var i: integer; vars: pVars; RealType: ident;
 begin
   vars := GetPointerFotListNameVar(index^.index);
 
-  while vars^.type_ = cmCustom do
+  while vars^.type_ in [cmCustom, cmArray, cmMatrix] do
   begin
+    if (vars^.type_ in [cmArray, cmMatrix]) and (vars^.typeArray <> cmCustom) then 
+    begin
+      break;
+    end;
+    if (vars^.type_ in [cmArray, cmMatrix]) then index := index^.next;
+
     index := index^.next;
     vars := vars^.index_custom_type_^.vars;
 
@@ -796,7 +820,9 @@ begin
 
   RealType := vars^.type_;
 
-  if vars^.type_ in [cmArray, cmMatrix, cmVar] then RealType := vars^.typeArray;
+  if (vars^.type_ in [cmArray, cmMatrix]) then RealType := vars^.typeArray;
+
+  if vars^.type_ in [cmVar] then RealType := vars^.typeArray;
   
   GetTypeVar := RealType;
 end;
