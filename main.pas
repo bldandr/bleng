@@ -33,8 +33,16 @@ Function InterFunc(p: pFunc; vars: pointer):tValue; forward;
 procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
 procedure CommandCreateVar(var Last: pNode); forward;
 
+{Процедура, которая по лексеме выводит фактическое название}
+function GetLexForIdent(ch: ident):string;
+var i: integer; ii: ident;
+begin
+  if MainLex[ch] = '' then GetLexForIdent := 'идентефикатор' 
+  else GetLexForIdent := MainLex[ch];
+end;
+
 {Процедура вывода ошибки}
-Procedure Error(err: string);
+Procedure Error(err: string; want, fact: ident);
 var i: integer;
 begin
   {Если не конец файла, то ошибка интерпретации}
@@ -47,6 +55,8 @@ begin
     writeln(LastSt);
     for i := 1 to Symbol-1 do write(' ');
     writeln('^');
+    writeln('Ожидалось: ', want);
+    writeln('Фактически: ', fact);
     writeln('-----------------------');
   end
   else 
@@ -100,7 +110,7 @@ begin
     end;
   end;
 
-  Error('Нет такого идентефикатора: ' + id);
+  Error('Нет такого идентефикатора: ' + id, cmIdent, cmIdent);
 end;
 
 {Функция, которая проверяет уникальность идентефикатора}
@@ -111,21 +121,21 @@ begin
   tzFunc := Code;
   while tzFunc <> nil do 
   begin
-    if tzFunc^.name = id then Error('Повтор идентефикатора: '+ id);
+    if tzFunc^.name = id then Error('Повтор идентефикатора: '+ id, cmIdent, cmIdent);
     tzFunc := tzFunc^.next;
   end;
 
   tz := VarName;
   while tz <> nil do 
   begin
-    if tz^.name = id then Error('Повтор идентефикатора: ' + id);
+    if tz^.name = id then Error('Повтор идентефикатора: ' + id, cmIdent, cmIdent);
     tz := tz^.next;
   end;
 
   tz := func^.vars;
   while tz <> nil do
   begin
-    if tz^.name = id then Error('Повтор идентефикатора: ' + id);
+    if tz^.name = id then Error('Повтор идентефикатора: ' + id, cmIdent, cmIdent);
     tz := tz^.next;
   end;
 end;
@@ -265,7 +275,7 @@ begin
     end;
   end;
 
-  Error('Нет такого идентефикатора: ' + id);
+  Error('Нет такого идентефикатора: ' + id, cmIdent, cmIdent);
 end;
 
 
@@ -305,10 +315,11 @@ begin
   end;
   i := 1;
   while st[i] = ' ' do {Пока идут пробелы}
-    inc(i);
+  begin
+    inc(i); inc(Symbol);
+  end;
 
   delete(st, 1, i-1);
-  Symbol := Symbol + i-1;
   i := 1;
 
   if (st = '') and not(eof(f)) then 
@@ -339,7 +350,7 @@ begin
                 begin
                   Lex := Copy(st, 1, i-1);
                   Val(lex, LexNumFloat, code);
-                  if code < 0 then Error('Неверно запиисана цифра: ' + lex);
+                  if code < 0 then Error('Неверно запиисана цифра: ' + lex, cmNumber, cmNumber);
                   Delete(st, 1, i-1);
                   GetLex := cmNumberFloat;
                   exit;
@@ -372,7 +383,7 @@ begin
         Lex := copy(st, 1, i-1);
         Delete(st, 1, i-1);
       end
-      else Error('Недопустимый символ "' + lex + '"');
+      else Error('Недопустимый символ "' + lex + '"', cmIdent, cmIdent);
     end;
   end;
   Symbol := Symbol + i-1;
@@ -407,12 +418,12 @@ begin
   {Обрабатываем имя структуры}
   ch := GetLex;
   if ch = cmIdent then tz^.name := lex
-  else Error('Требуется имя структуры!');
+  else Error('Требуется имя структуры!', cmIdent, ch);
   
   {Проверка на фигурную скобку}
   ch := GetLex;
   if ch = cmFSO then ch := GetLex
-  else Error('Требуется {!');
+  else Error('Требуется {!', cmFSO, ch);
 
   tz^.vars := nil;
 
@@ -449,14 +460,14 @@ begin
         tzVars^.next := nil;
 
         ch := GetLex; 
-        if ch <> cmIdent then Error('Требуется идентефикатор!');
+        if ch <> cmIdent then Error('Требуется идентефикатор!', cmIdent, ch);
       end; 
     end;
     if ch = cmTZ then ch := GetLex;
   end;
 
   if ch = cmFSC then ch := GetLex
-  else Error('Требуется }!');
+  else Error('Требуется }!', cmFSC, ch);
 
   if ch = cmTZ then ch := GetLex;
 end;
@@ -537,11 +548,11 @@ begin
       begin
         {Запоминаем число(количество элементов) в массиве и его тип}
         if ch = cmNumber then tz^.max_size := LexNum
-        else Error('Требуется число!');
+        else Error('Требуется число!', cmNumber, ch);
 
         ch := GetLex; 
         if ch in [cmKSC] then ch := GetLex
-        else Error('Требуется ]!');
+        else Error('Требуется ]!', cmKSC, ch);
 
         tz^.type_ := cmArray;
 
@@ -551,11 +562,11 @@ begin
           {Запоминаем максимальное количество элементов во второй плоскости матрицы и сохраняем тип}
           ch := GetLex;
           if ch = cmNumber then tz^.matrix_size := LexNum
-          else Error('Требуется число!');
+          else Error('Требуется число!', cmNumber, ch);
           ch := GetLex;
 
           if ch in [cmKSC] then ch := GetLex
-          else Error('Требуется ]!');
+          else Error('Требуется ]!', cmKSC, ch);
 
           tz^.type_ := cmMatrix;
         end;
@@ -570,7 +581,7 @@ begin
             index_custom_type_ := GetIndexType(lex);
           end;
         end
-        else Error('Требуется тип!');
+        else Error('Требуется тип!', cmTypes, ch);
         
         {Если дальше идет идентефикаторы, то создаем новые элементы в списке глобальных имен переменных и следовательно запоминаем их}
         ch := GetLex;
@@ -579,13 +590,13 @@ begin
           CheckIdent(lex);
           tz^.name := lex; tz^.typeArray := typeArray; tz^.index_custom_type_ := index_custom_type_;
         end
-        else Error('Требуется идентефикатор!');
+        else Error('Требуется идентефикатор!', cmIdent, ch);
 
       end;
       {Если не лексемы, которые должны идти дальше - выдаем ошибку}
       Ch := GetLex;
       if not(Ch in [cmTZ,cmZP,cmFunc] + types)
-      then Error('Требуется ";"!'){Если не ; ,}
+      then Error('Требуется ";"!', cmTZ, ch){Если не ; ,}
       else if Ch <> cmTZ then
       begin
         {А иначе, если тип все таки запятая, то создаем новый элемент в списке глобальных названий переменных}
@@ -702,7 +713,7 @@ begin
     begin
       ch := GetLex; 
       if ch = cmT then ch := GetLex
-      else Error('Требуется точка!'); 
+      else Error('Требуется точка!', cmT, ch); 
 
       new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
 
@@ -724,20 +735,20 @@ begin
     begin
       ch := GetLex;
       if ch = cmKSO then ch := GetLex
-      else Error('Требуется [!');
+      else Error('Требуется [!', cmKSO, ch);
       
       new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;   
 
       tzList^.TreeIndex := orExpr;
 
-      if ch <> cmKSC then Error('Требуется ]!');
+      if ch <> cmKSC then Error('Требуется ]!', cmKSC, ch);
 
       if tz^.type_ = cmMatrix then
       begin
         ch := GetLex;
 
         if ch = cmKSO then ch := GetLex
-        else Error('Требуется ]!');
+        else Error('Требуется ]!', cmKSO, ch);
 
         new(tzList^.next); tzList := tzList^.next; tzList^.next := nil;
       
@@ -842,7 +853,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -875,7 +886,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -908,7 +919,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -941,7 +952,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -974,7 +985,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -1007,7 +1018,7 @@ begin
     left := tz;
 
     {Проверка на соответствие типов и сложение двух констант заранее}
-    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!')
+    if left^.left^.typeElem <> left^.right^.typeElem then Error('Несоответствие типов!', cmTypes, cmTypes)
     else left^.typeElem := left^.left^.typeElem;
 
     if (left^.left^.typ = cmConst) and (left^.right^.typ = cmConst) then 
@@ -1097,7 +1108,7 @@ begin
             ch := GetLex;
             tz := OrExpr;
 
-            if ch <> cmSC then Error('Требуется скобка!')
+            if ch <> cmSC then Error('Требуется скобка!', cmSC, ch)
           end;
     cmNot:begin
             {Если тут not, то обрабатываем левую ветку, как и с открытой скобкой}
@@ -1108,9 +1119,9 @@ begin
               ch := GetLex;
               tz^.left := OrExpr;
             end
-            else Error('Требуется (!');
+            else Error('Требуется (!', cmSO, ch);
 
-            if ch <> cmSC then Error('Требуется )!');
+            if ch <> cmSC then Error('Требуется )!', cmSC, ch);
 
             tz^.Typ := cmOper;
             tz^.op := cmNot;
@@ -1144,10 +1155,10 @@ begin
     ch := GetLex;
     Last^.treeVar := OrExpr;
     if (GetTypeVar(indexVar) <> Last^.treeVar^.typeElem)
-    then Error('Несоответствие типов.');
+    then Error('Несоответствие типов.', cmTypes, cmTypes);
     Last^.index := indexVar;
   end
-  else Error('Требуется "="!');
+  else Error('Требуется "="!', cmRavno, ch);
 end;
 
 {Процедура обработки вызова подпрограммы}
@@ -1165,7 +1176,7 @@ begin
     {Проверяем наличие скобки}
     ch := GetLex;
     if ch = cmSO then ch := GetLex
-    else Error('Требуется (!');
+    else Error('Требуется (!', cmSO, ch);
 
     {Выделяем память под деревья значений параметров}
     GetMem(Last^.vars, sizeof(pTree)*index^.performans);
@@ -1186,7 +1197,7 @@ begin
           pTreeArray(Last^.vars)^[i]^.index := BuildIndexList;
 
           {Берем указатель на пзвено названий списка переменных и сверяем типы}
-          if GetTypeVar(pTreeArray(Last^.vars)^[i]^.index) <> tz^.typeArray then Error('Несоответствие типов!');
+          if GetTypeVar(pTreeArray(Last^.vars)^[i]^.index) <> tz^.typeArray then Error('Несоответствие типов!', cmTypes, cmTypes);
           ch := GetLex;
         end
         {Если параметр обычный -}
@@ -1194,15 +1205,15 @@ begin
         begin
           {Вызываем рекурсию на значение параметра и сверяем типы}
           pTreeArray(Last^.vars)^[i] := orExpr;
-          if pTreeArray(Last^.vars)^[i]^.typeElem <> tz^.type_ then Error('Несоответствие типов!');
+          if pTreeArray(Last^.vars)^[i]^.typeElem <> tz^.type_ then Error('Несоответствие типов!', cmTypes, cmTypes);
         end;
       end
-      else Error('Требуется переменная!');
+      else Error('Требуется переменная!', cmIdent, ch);
 
 
       {Если не запятая/), то ошибка}
       if ch in [cmZP, cmSC] then ch := GetLex
-      else Error('Требуется ,!');
+      else Error('Требуется ,!', cmZP, ch);
 
       tz := tz^.next;
     end;
@@ -1273,7 +1284,7 @@ begin
     exit;
   end;
 
-  Error('Нет такого идентефикатора: ' + lex);
+  Error('Нет такого идентефикатора: ' + lex, cmIdent, cmIdent);
 end;
 
 {Процедура обработки оператора вывода write}
@@ -1285,10 +1296,10 @@ begin
   {Првоеряем наличие скобок, строим дерево значения для вывода и проверяем наличие закрытой скобки}
   ch := GetLex;
   if ch = cmSO then ch := GetLex
-  else error('Требуется "("!');
+  else error('Требуется "("!', cmSO, ch);
   Last^.tree := OrExpr;
   if ch = cmSC then ch := GetLex
-  else error('Требуется ")"!');
+  else error('Требуется ")"!', cmSC, ch);
 end;
 
 {Обработка оператора if}
@@ -1303,10 +1314,10 @@ begin
 
   {Проверяем наличие then}
   if ch = cmThen then ch := GetLex
-  else Error('Требуется then!');
+  else Error('Требуется then!', cmThen, ch);
   {Вызываем подпрограмму обработки тела опретаора}
   if ch = cmFSO then Last^.then_ := Operator
-  else Error('Требуется "{"!');
+  else Error('Требуется "{"!', cmFSO, ch);
   ch := GetLex;
   Last^.else_ := nil;
   {Если есть else, то бежим обарабатывать его тело}
@@ -1314,7 +1325,7 @@ begin
   begin
     ch := GetLex;
     if ch = cmFSO then Last^.else_ := Operator
-    else Error('Требуется "{"!');
+    else Error('Требуется "{"!', cmFSO, ch);
     ch := GetLex;
   end
 end;
@@ -1333,7 +1344,7 @@ begin
     Last^.indexFor := BuildIndexList;
     ch := GetLex
   end
-  else Error('Требуется идентефикатор!');
+  else Error('Требуется идентефикатор!', cmIdent, ch);
   
   {Обрабатываем оператор присваивания к счетчику}
   if ch = cmRavno then
@@ -1341,7 +1352,7 @@ begin
     ch := GetLex;
     Last^.varFor := OrExpr;
   end
-  else Error('Требуется "="!');
+  else Error('Требуется "="!', cmRavno, ch);
 
   {Проверяем наличие to и если есть - строим дерево, до куда должен идти счетчик}
   if ch = cmTo then
@@ -1349,7 +1360,7 @@ begin
     ch := GetLex;
     Last^.opFor := orExpr;
   end
-  else Error('Требуется "to"!');
+  else Error('Требуется "to"!', cmTo, ch);
   
   {Проверяем do и строим тело цикла}
   if ch = cmDo then
@@ -1357,9 +1368,9 @@ begin
     ch := GetLex;
     Last^.do_ := nil;
     if ch = cmFSO then Last^.do_ := Operator
-    else Error('Требуется "{"!');
+    else Error('Требуется "{"!', cmFSO, ch);
   end
-  else Error('Требуется "do"!');
+  else Error('Требуется "do"!', cmDo, ch);
   ch := GetLex;
 end;
 
@@ -1375,9 +1386,9 @@ begin
 
   {Строим тело цикла}
   if ch = cmDo then ch := GetLex
-  else Error('Требуется "do"!');
+  else Error('Требуется "do"!', cmDo, ch);
   if ch = cmFSO then Last^.doWhile_ := Operator
-  else Error('Требуется "{"!');
+  else Error('Требуется "{"!', cmFSO, ch);
 
   ch := GetLex;
 end;
@@ -1391,11 +1402,11 @@ begin
   {Проверяем наличие скобки и сохраняем индекс переменной}
   ch := GetLex;
   if ch = cmSO then ch := GetLex
-  else Error('Требуется "("!');
+  else Error('Требуется "("!', cmSO, ch);
   if ch = cmIdent then Last^.indexRead := BuildIndexList;
 
   if ch = cmSC then ch := GetLex
-  else Error('Требуется ")"!');
+  else Error('Требуется ")"!', cmSC, ch);
 end;
 
 {Обработка команды return}
@@ -1407,7 +1418,7 @@ begin
   {Строим дерево значения возврата и сверяем тип}
   ch := GetLex;
   Last^.return := OrExpr;
-  if Last^.return^.typeElem <> Func^.typeReturn then Error('Несоответствие типов!');
+  if Last^.return^.typeElem <> Func^.typeReturn then Error('Несоответствие типов!', cmTypes, cmTypes);
 
   ch := GetLex;
 end;
@@ -1437,7 +1448,7 @@ begin
     else
     begin
       if ch = cmIdent then last^.next := NewFunc(lex)
-      else Error('Требуется имя функции!');
+      else Error('Требуется имя функции!', cmIdent, ch);
       Last := Last^.next;
     end;
 
@@ -1476,10 +1487,10 @@ begin
         begin
           type_ := cmArray;
           ch := GetLex;
-          if ch <> cmNumber then Error('Требуется число!');
+          if ch <> cmNumber then Error('Требуется число!', cmNumber, ch);
           ch := GetLex;
           if ch = cmKSC then ch := GetLex
-          else Error('Требуется ]!');
+          else Error('Требуется ]!', cmKSC, ch);
 
           typeArray := ch;
         end;
@@ -1496,7 +1507,7 @@ begin
 
           {Если идентефикатор, то сохраняем имя}
           if ch = cmIdent then tz^.name := lex
-          else Error('Требуется имя переменной!');
+          else Error('Требуется имя переменной!', cmIdent, ch);
 
           ch := GetLex;
           {если запятая, то создаем новый элемент в списке лексем}
@@ -1510,7 +1521,7 @@ begin
 
       {Проверяем наличие закрывающейся скобки}
       if ch = cmSC then ch := GetLex
-      else Error('Требуется )!');
+      else Error('Требуется )!', cmSC, ch);
     end;
 
     {Проверяем, есть ли тип у функции. если есть - сохраняем}
@@ -1525,7 +1536,7 @@ begin
 
     {Строим дерево-тело функции}
     if ch = cmFSO then Last^.tree := operator
-    else Error('Требуется {!');
+    else Error('Требуется {!', cmFSO, ch);
 
     ch := GetLex;
     if ch = cmTZ then ch := GetLex;
@@ -1546,12 +1557,12 @@ begin
   begin
     type_ := cmArray;
     ch := GetLex;
-    if ch <> cmNumber then Error('Требуется число!');
+    if ch <> cmNumber then Error('Требуется число!', cmNumber, ch);
     ch := GetLex;
-    if ch <> cmKSC then Error('Требуется ]!');
+    if ch <> cmKSC then Error('Требуется ]!', cmKSC, ch);
     ch := GetLex;
     if ch in types then TypeArray := ch
-    else Error('Требуется тип!');
+    else Error('Требуется тип!', cmTypes, ch);
   end;
 
   if (ch in customTypes) or IsType(lex) then 
@@ -1563,7 +1574,7 @@ begin
 
   ch := GetLex;
 
-  if func = nil then Error('Ошибка bleng: пустой указатель func в функции CommandCreateVar.');
+  if func = nil then Error('Ошибка bleng: пустой указатель func в функции CommandCreateVar.', cmName, cmName);
 
   {проверяем на то, есть ли уже переменные в функции. если есть - добираемся
   до их конца, а если нет - создаем}
@@ -1592,7 +1603,7 @@ begin
       tz^.index_custom_type_ := index_custom_type_;
     end;
     Ch := GetLex;
-    if not(Ch in [cmZP, cmTZ]) then Error('Требуется ":"!'){Если не , :}
+    if not(Ch in [cmZP, cmTZ]) then Error('Требуется ":"!', cmTZ, ch){Если не , :}
     else if Ch = cmZP then
     begin
       {Если запятая - создаем еще переменную}
@@ -1620,10 +1631,10 @@ begin
       cmWhile: OperatorWhile(Last);
       cmRead: CommandRead(Last);
       cmReturn: CommandReturn(Last);
-      cmElse: Error('Ошибка в операторе!');
+      cmElse: Error('Ошибка в операторе!', cmName, cmElse);
     end;
 
-    if not(ch in [cmTZ, cmFSC]) then Error('Требуется ";"!');
+    if not(ch in [cmTZ, cmFSC]) then Error('Требуется ";"!', cmTZ, ch);
   until Ch = cmFSC;
   Last^.next := nil;
 end;
@@ -1642,7 +1653,7 @@ begin
     begin 
       {Проверяем обе ветки на соответствие}
       if (L.Type_ <> cmBool) or (R.Type_ <> cmBool) then
-        Error('Логические операции возможны только для boolean!');
+        Error('Логические операции возможны только для boolean!', cmName, cmName);
     end;
 
     Res.Type_ := cmBool;
@@ -1658,7 +1669,7 @@ begin
 
   {Проверяем соответствие типов}
   if L.Type_ <> R.Type_ then 
-    Error('Несоответствие типов|');
+    Error('Несоответствие типов|', cmName, cmName);
 
   {Проверяем на сравнения}
   if op in [cmOpM, cmOpB, cmOpSr, cmOpBR, CmOpMR, cmOpNR] then
@@ -1693,7 +1704,7 @@ begin
         case op of
           cmOpSr: Res.b := L.s = R.s;
           cmOpNR: Res.b := L.s <> R.s;
-          else Error('Для строк допустима только операция равенства.');
+          else Error('Для строк допустима только операция равенства.', cmName, cmName);
         end;
       end;
       cmChar:
@@ -1716,7 +1727,7 @@ begin
                cmCdot: Res.i := L.i * R.i;
                cmDiv: Res.i := L.i div R.i;
                cmMod: Res.i := L.i mod R.i;
-               else Error('Данная операция не поддерживается над типом integer.');
+               else Error('Данная операция не поддерживается над типом integer.', cmName, cmName);
              end;
              Res.Type_ := cmInt;
            end;
@@ -1733,7 +1744,7 @@ begin
     cmString: begin
                 case op of
                   cmPlus: Res.s := PlusString(l.s, r.s)
-                  else Error('Для строк невозможна данная операция!');
+                  else Error('Для строк невозможна данная операция!', cmName, cmName);
                 end;
                 Res.Type_ := cmString;
               end;
@@ -1802,12 +1813,12 @@ begin
 
   {Если не integer - ошибка. Иначе присваиваем значение переменной}
   if (timeVar^.Type_ <> val.Type_) or (val.Type_ <> cmInt)
-  then Error('Требуется тип int.')
+  then Error('Требуется тип int.', cmName, cmName)
   else timeVar^ := val;
 
   {Получаем, до куда надо идти}
   EvalTree(pFor^.opFor, val);
-  if val.Type_ <> cmInt then Error('Требуется тип integer.');
+  if val.Type_ <> cmInt then Error('Требуется тип integer.', cmName, cmName);
 
   {Повторяем выполнение интерпретации, пока наша переменная меньше итогового значения}
   while timeVar^.i <= val.i do
@@ -1824,7 +1835,7 @@ begin
   {Получаем значение условия}
   Evaltree(p^.opWhile, val);
 
-  if val.Type_ <> cmBool then Error('Недопустимый тип.');
+  if val.Type_ <> cmBool then Error('Недопустимый тип.', cmName, cmName);
 
   {Пока условие верно - интерпретируем тело и получаем условие снова}
   while val.b do
@@ -1899,7 +1910,7 @@ begin
     cmString: read(string(timeVar^.s^));
     cmChar: read(timeVar^.c);
     cmFloat: read(timeVar^.f)
-    else Error('Нельзя считать переменную данного типа!');
+    else Error('Нельзя считать переменную данного типа!', cmName, cmName);
   end;
 end;
 
@@ -1961,7 +1972,7 @@ begin
         нужное значение}
         timeStack := stack;
         if stack^.next <> nil then stack := stack^.next
-        else Error('Ошибка интерпретатора: nil stack');
+        else Error('Ошибка интерпретатора: nil stack', cmName, cmName);
         EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
         stack := timeStack;
       end;
@@ -2025,7 +2036,7 @@ begin
     if ch in types then SectionVar; {Если дальше идет раздел var - вызываем его}
 
     if ch = cmFunc then ComandFunc(Code, func)
-    else Error('Требуется хотя бы 1 функция!');
+    else Error('Требуется хотя бы 1 функция!', cmName, cmName);
 
     f := tempF; st := tempSt;
     ch := GetLex; ch := GetLex;
@@ -2051,9 +2062,9 @@ begin
     SectionVar; {Если дальше идет раздел var - вызываем его}
 
   if ch = cmFunc then ComandFunc(Code, func)
-  else Error('Требуется хотя бы 1 функция!');
+  else Error('Требуется хотя бы 1 функция!', cmFunc, ch);
 
-  if code^.name <> 'main' then Error('Требуется фукнция main!');
+  if code^.name <> 'main' then Error('Требуется фукнция main!', cmIdent, ch);
 
   InterFunc(Code, nil); {Вызываем выполнение команд}
 
