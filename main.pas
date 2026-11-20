@@ -167,6 +167,11 @@ begin
       cmCustom:
       begin
         index := index^.next;
+        if val^.k^.type_ in types then 
+        begin
+          GetValueVarForIndex := val;
+          exit;
+        end;
         val := @pVarArray(val^.k^.data)^[index^.index];
       end;
       cmArray:
@@ -685,9 +690,18 @@ begin
       end
       else 
       begin
-        pVarArray(var_)^[i] := GetMemForCustomElements(index_custom_type_);
+        if tz^.type_ in types then
+        begin
+          new(pVarArray(var_)^[i].k); 
+          pVarArray(var_)^[i].k^.type_ := cmTypes;
+          pVarArray(var_)^[i].k^.data := nil;
+        end 
+        else
+        begin
+          pVarArray(var_)^[i] := GetMemForCustomElements(tz^.index_custom_type_);
 
-        tz^.type_ := cmCustom;
+          tz^.type_ := cmCustom;
+        end;
       end;
     end;
     tz := tz^.next;
@@ -2043,7 +2057,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'main.b')
+  if ParamCount = 0 then assign(f, 'examples/rougle.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}

@@ -299,8 +299,8 @@ begin
   InitFunc(Func, 'MouseBTNPressed', 1, @IsMouseButtonPressedMod, varsmod, cmBool);
 
   varsmod[1] := cmString;
-  InitFunc(Func, 'LoadTexture', 1, @LoadTextureMod, varsmod, cmCustom);
+  InitFunc(Func, 'LoadTexture', 1, @LoadTextureMod, varsmod, cmTexture2D);
 
-  varsmod[1] := cmCustom; varsmod[2] := cmInt; varsmod[3] := cmInt;
+  varsmod[1] := cmTexture2D; varsmod[2] := cmInt; varsmod[3] := cmInt;
   InitFunc(Func, 'DrawTexture', 3, @DrawTextureMod, varsmod, cmName);
 end.

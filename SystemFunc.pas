@@ -83,7 +83,8 @@ begin
       end;
       cmCustom:
       begin
-        DisposeVar(pVarArray(p)^[i].k^.data, pVarArray(p)^[i].k^.index^.countVar)
+        if not(pVarArray(p)^[i].k^.type_ in types) then 
+          DisposeVar(pVarArray(p)^[i].k^.data, pVarArray(p)^[i].k^.index^.countVar)
       end;
     end;
   end; 
