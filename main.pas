@@ -130,28 +130,6 @@ begin
   end;
 end;
 
-{Функция, которая возвращает указатель на элемент динамического списка имен переменных(глобальных и локальных) по индексу}
-Function GetPointerForNameVar(index: integer):pVars;
-var tz: pVars;
-begin
-  {Если индекс отрицательный - переменна глоабльная}
-  if index < 0 then
-  begin
-    tz := VarName;
-    while (tz^.name <> lex) and (tz <> nil) 
-    do tz := tz^.next;
-  end
-  else
-  {Иначе, переменная локальная}
-  begin
-    tz := func^.Vars;
-    while (tz^.name <> lex) and (tz <> nil)
-    do tz := tz^.next;
-  end;
-
-  GetPointerForNameVar := tz;
-end;
-
 {Функция, которая возвращает значение переменной по индеку}
 function GetValueVarForIndex(index: pIndex):pValue;
 var IndexN: integer; val: pValue; indexI, indexJ: tValue; type_ : ident;
