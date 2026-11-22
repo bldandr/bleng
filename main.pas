@@ -1952,29 +1952,31 @@ begin
     {Если еще и параметров больше, чем переменных, которые мы просмотрели, то это значит, что данная переменная - параметр}
     if p^.performans >= i then
     begin
-      {Если var-параметр, то}
-      if tz^.Type_ = cmVar then
-      begin
-        {переходим к следущему элементу стека, чтоб верно определился адрес переменной}
-        timeStack := stack;
-        stack := stack^.next;
+      case tz^.Type_ of 
+        {Если var-параметр, то}
+        cmVar:
+        begin
+          {переходим к следущему элементу стека, чтоб верно определился адрес переменной}
+          timeStack := stack;
+          stack := stack^.next;
 
-        {Присваиваем параметру адрес переменной}
-        pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(pTreeArray(vars)^[i]^.index);
+          {Присваиваем параметру адрес переменной}
+          pVarArray(timeStack^.var_)^[i].v := GetValueVarForIndex(pTreeArray(vars)^[i]^.index);
 
-        {Возвращаем стек}
-        stack := timeStack;
-      end
-      {Если наша переменная - это все таки не var-параметр, то}
-      else
-      begin
-        {Откатываемся в стеке назад(ибо не будет корректно работать EvalTree т.к. новый стек содержит бесполеный мусор) и присваиваем к нашему мусору
-        нужное значение}
-        timeStack := stack;
-        if stack^.next <> nil then stack := stack^.next
-        else Error('Ошибка интерпретатора: nil stack', cmName, cmName);
-        EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
-        stack := timeStack;
+          {Возвращаем стек}
+          stack := timeStack;
+        end;
+        {Если наша переменная - это все таки не var-параметр, то}
+        else
+        begin
+          {Откатываемся в стеке назад(ибо не будет корректно работать EvalTree т.к. новый стек содержит бесполеный мусор) и присваиваем к нашему мусору
+          нужное значение}
+          timeStack := stack;
+          if stack^.next <> nil then stack := stack^.next
+          else Error('Ошибка интерпретатора: nil stack', cmName, cmName);
+          EvalTree(pTreeArray(vars)^[i], pVarArray(timeStack^.var_)^[i]);
+          stack := timeStack;
+        end;
       end;
     end;
 
