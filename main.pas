@@ -33,13 +33,6 @@ Function InterFunc(p: pFunc; vars: pointer):tValue; forward;
 procedure AddVal(L, R: tValue; var Res: tValue; op: ident); forward;
 procedure CommandCreateVar(var Last: pNode); forward;
 
-{Процедура, которая по лексеме выводит фактическое название}
-function GetLexForIdent(ch: ident):string;
-var i: integer; ii: ident;
-begin
-  if MainLex[ch] = '' then GetLexForIdent := 'идентефикатор' 
-  else GetLexForIdent := MainLex[ch];
-end;
 
 {Процедура вывода ошибки}
 Procedure Error(err: string; want, fact: ident);
