@@ -637,8 +637,8 @@ begin
       {Для строки - выделяем память для 1 байта(количества символом) и обнуляем его}
       cmString:
       begin
-        Getmem(pVarArray(var_)^[i].s, sizeof(byte));
-        FillChar(pVarArray(var_)^[i].s^, sizeof(byte), 0);
+        new(pVarArray(var_)^[i].s);
+        FillChar(pVarArray(var_)^[i].s^, sizeof(string), 0);
       end;
       {Для массива создаем новый элемент его описания, присваиваем этому элементу максимальный размер, выделяем память под этот размер и зануляем массив}
       cmArray:
@@ -770,35 +770,22 @@ begin
 end;
 
 {Функция сложения строк. На вход берет два указателя на строки и возвращает другой указатель с полной строкой}
-Function PlusString(left, right:pointer):pointer;
+Function PlusString(left, right:pString):pString;
 var SizeLeft, SizeRight, SizeTotal: byte;
-    p: pointer;
+    res: pString;
 begin
-  {Берем размерности строк, которые требуется сложить}
-  SizeLeft := byte(left^);
-  SizeRight := Byte(right^);
-  SizeTotal:= SizeLeft + SizeRight;
+  new(res); res^ := left^ + right^;
 
-  {Выделяем память под новую строку и присваем ему конечный размер}
-  GetMem(p, SizeTotal + sizeof(byte));
-  byte(p^) := Sizetotal;
-
-  {Копируем оба указателя в новую строку}
-  Move(pCharArray(left)^[1], pCharArray(p)^[sizeof(byte)], SizeLeft);
-  Move(pCharArray(right)^[1], pCharArray(p)^[sizeof(byte)+SizeLeft], SizeRight);
-
-  PlusString := p;
+  PlusString := res;
 end;
 
 {Функция присваивания значения строке. Берет значение, которое нужно присвоить и отдает указатель на новую строку}
-Function ValueString(s: string):pointer;
-var p: pointer;
+Function ValueString(s: string):pString;
+var res: pString;
 begin
-  {Выделяем память и копируем туда значение}
-  GetMem(p, sizeof(byte) + length(s));
-  Move(s, p^, sizeof(char) + length(s));
+  new(res); res^ := s;
 
-  ValueString := p;
+  ValueString := res;
 end;
 
 {Функция, которая по списку индексов отдает тип переменной}
@@ -1745,12 +1732,30 @@ begin
     end;
     cmString: begin
                 case op of
-                  cmPlus: Res.s := PlusString(l.s, r.s)
+                  cmPlus: res.s^ := l.s^ + r.s^;
                   else Error('Для строк невозможна данная операция!', cmName, cmName);
                 end;
                 Res.Type_ := cmString;
               end;
   end;
+end;
+
+{Функция для копирования результата в переменных}
+function CopyValue(start: tValue):tValue;
+var res: tValue;
+begin
+  res := start;
+
+  case start.type_ of
+    cmString: 
+    begin
+      res.s := nil;
+      new(res.s);
+      res.s^ := start.s^;
+    end;
+  end;
+
+  CopyValue := res;
 end;
 
 {Функция для обхода дерева и получения результата в следствии}
@@ -1767,7 +1772,7 @@ begin
     end
     else begin {Если наш узел - не операция, то обрабатываем его как}
            case p^.Typ of                {переменную/константу}
-             cmConst: Res := p^.value; {Конст - просто отдаем значение}
+             cmConst: Res := CopyValue(p^.value); {Конст - просто отдаем значение}
              cmVar: res := GetValueVarForIndex(p^.index)^; {Идентефикатор - возвращаем значение переменной}
              cmFunc: Res := InterFunc(p^.indexFunc, p^.vars);           
            end;
@@ -2050,7 +2055,7 @@ end;
 
 begin
   {Если есть параметры - открываем файл из параметра, иначе открываем main.b}
-  if ParamCount = 0 then assign(f, 'examples/rougle.b')
+  if ParamCount = 0 then assign(f, 'krolik.b')
   else assign(f, ParamStr(1));
 
   {Открытие файла}

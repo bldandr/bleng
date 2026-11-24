@@ -83,7 +83,7 @@ begin
         FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
         dispose(pVarArray(p)^[i].a);
       end;
-      //cmString: FreeMem(pVarArray(p)^[i].s, byte(pVarArray(p)^[i].s^)+sizeof(byte));
+      cmString: if pVarArray(p)^[i].s <> nil then Dispose(pVarArray(p)^[i].s);
       cmMatrix:
       begin
         GetMem(pVarArray(p)^[i].m^.data, pVarArray(p)^[i].m^.Sizei*pVarArray(p)^[i].m^.Sizej*sizeof(tValue));

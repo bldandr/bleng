@@ -60,7 +60,7 @@ Type
      tValue = record 
                 Case Type_:ident of
                   cmInt: (i: Longint);
-                  cmString: (s: pointer);
+                  cmString: (s: pString);
                   cmBool: (b: boolean);
                   cmChar: (c: char);
                   cmFloat: (f: real);
