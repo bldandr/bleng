@@ -64,7 +64,7 @@ end;
 
 {Зачистка переменных в памяти}
 procedure DisposeVar(p: pointer; size: integer);
-var i, sizeString: integer;
+var i, sizeString, j: integer; ptrArray: pointer;
 begin
   for i := 1 to size do
   begin
@@ -72,6 +72,14 @@ begin
     case pVarArray(p)^[i].type_ of
       cmArray: 
       begin
+        ptrArray := pVarArray(p)^[i].a^.data; 
+
+        for j := 1 to pVarArray(p)^[i].a^.size do
+        begin
+          if pVarArray(ptrArray)^[j].type_ = cmCustom then 
+            DisposeVar(pVarArray(ptrArray)^[j].k^.data, pVarArray(ptrArray)^[j].k^.index^.countVar)
+        end;
+
         FreeMem(pVarArray(p)^[i].a^.data, pVarArray(p)^[i].a^.size*sizeof(tValue));
         dispose(pVarArray(p)^[i].a);
       end;
