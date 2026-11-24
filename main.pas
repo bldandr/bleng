@@ -1405,6 +1405,8 @@ begin
   else Error('Требуется "("!', cmSO, ch);
   if ch = cmIdent then Last^.indexRead := BuildIndexList;
 
+  ch := GetLex;
+
   if ch = cmSC then ch := GetLex
   else Error('Требуется ")"!', cmSC, ch);
 end;
