@@ -77,7 +77,7 @@ func DrawAll {
                     DrawTexture(portal, j*35-35, i*35-35);
                 };
                 if matr[i][j] == 4 then {
-                    DrawTexture(zele, j*35-25, i*35-25); 
+                    DrawTexture(zele, j*35-35, i*35-35); 
                 };
             }
         };
